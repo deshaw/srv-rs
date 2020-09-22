@@ -1,0 +1,42 @@
+[package]
+name = "srv-rs"
+version = "0.1.0"
+authors = ["Max Heller <max.heller@deshaw.com>"]
+edition = "2018"
+description = "Rust client for communicating with SRV-located services"
+readme = "README.md"
+homepage = "https://github.com/deshaw/srv-rs"
+repository = "https://github.com/deshaw/srv-rs"
+license = "BSD-3-Clause"
+keywords = ["srv", "record", "dns", "resolve", "libresolv"]
+categories = ["network-programming"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["libresolv", "log"]
+
+libresolv = ["libresolv-sys"]
+log = ["tracing"]
+
+[dependencies]
+arc-swap = "^0.4"
+async-trait = "^0.1"
+http = "^0.2"
+libresolv-sys = { version = "^0.2", optional = true }
+rand = "^0.7"
+thiserror = "^1"
+tracing = { version = "^0.1", optional = true }
+
+[dev-dependencies]
+criterion = "^0.3"
+hyper = "^0.13"
+tokio = { version = "^0.2", features = ["rt-threaded", "macros"] }
+
+[[bench]]
+name = "client"
+harness = false
+
+[[bench]]
+name = "resolver"
+harness = false
