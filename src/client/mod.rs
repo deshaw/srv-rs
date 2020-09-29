@@ -2,8 +2,12 @@
 
 use crate::{record::SrvRecord, resolver::SrvResolver};
 use arc_swap::{ArcSwap, Guard};
+use futures_util::{
+    stream::{self, Stream, StreamExt},
+    FutureExt,
+};
 use http::uri::{Scheme, Uri};
-use std::{future::Future, ops::Deref, sync::Arc, time::Duration};
+use std::{error::Error, future::Future, ops::Deref, sync::Arc, time::Duration};
 
 mod cache;
 use cache::Cache;
@@ -14,7 +18,7 @@ use policy::IntoUriIter;
 
 /// Errors encountered during SRV record resolution
 #[derive(Debug, thiserror::Error)]
-pub enum SrvError<Lookup: std::error::Error + 'static> {
+pub enum SrvError<Lookup: Error + 'static> {
     /// Srv lookup errors
     #[error("srv lookup error")]
     Lookup(Lookup),
@@ -25,7 +29,7 @@ pub enum SrvError<Lookup: std::error::Error + 'static> {
 
 /// Errors encountered by the SrvClient
 #[derive(Debug, thiserror::Error)]
-pub enum SrvClientError<Lookup: std::error::Error + 'static> {
+pub enum SrvClientError<Lookup: Error + 'static> {
     /// Produced when there are no URI candidates for a client to use
     #[error("no uri candidates")]
     NoUriCandidates,
@@ -43,6 +47,15 @@ pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
     path_prefix: String,
     policy: Policy,
     cache: ArcSwap<Cache<Policy::CacheItem>>,
+}
+
+/// Execution mode to use when performing an operation on SRV targets.
+pub enum ExecutionMode {
+    /// Operations are performed *serially* (i.e. one after the other).
+    Serial,
+    /// Operations are performed *concurrently* (i.e. all at once).
+    /// Note that this does not imply parallelism--no additional tasks are spawned.
+    Concurrent,
 }
 
 impl<Resolver: SrvResolver + Default, Policy: policy::Policy + Default>
@@ -119,36 +132,58 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
         IntoUriIter::uris(&self.policy, cached)
     }
 
-    /// Performs an operation serially for each base URI in an iterable,
-    /// stopping and returning the first success or returning the last error.
-    pub async fn execute_with<'a, F, T, E>(
+    /// Performs an operation on each of the URIs in `candidates`.
+    pub async fn execute<'a, F, T, E>(
         &self,
         mut func: impl FnMut(&'a Uri) -> F,
         candidates: impl IntoIterator<Item = &'a Uri>,
+        execution_mode: ExecutionMode,
     ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>>
     where
-        E: std::error::Error,
-        F: 'a + Future<Output = Result<T, E>>,
+        E: Error,
+        F: Future<Output = Result<T, E>> + 'a,
     {
-        let mut err = None;
-        for candidate in candidates {
-            match func(candidate).await {
+        match execution_mode {
+            ExecutionMode::Serial => {
+                let results = stream::iter(candidates)
+                    .then(|candidate| func(candidate).map(move |res| (candidate, res)));
+                self.process_results(results).await
+            }
+            ExecutionMode::Concurrent => {
+                let results: stream::FuturesUnordered<_> = candidates
+                    .into_iter()
+                    .map(|candidate| func(candidate).map(move |res| (candidate, res)))
+                    .collect();
+                self.process_results(results).await
+            }
+        }
+    }
+
+    async fn process_results<T, E: Error>(
+        &self,
+        results: impl Stream<Item = (&Uri, Result<T, E>)>,
+    ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>> {
+        pin_utils::pin_mut!(results);
+
+        let mut last_error = None;
+        while let Some((candidate, result)) = results.next().await {
+            match result {
                 Ok(res) => {
                     #[cfg(feature = "log")]
-                    tracing::info!(URI = %candidate, "(serial) execution attempt succeeded");
+                    tracing::info!(URI = %candidate, "execution attempt succeeded");
                     self.policy.note_success(candidate);
                     return Ok(Ok(res));
                 }
-                Err(e) => {
+                Err(err) => {
                     #[cfg(feature = "log")]
-                    tracing::info!(URI = %candidate, error = %e, "(serial) execution attempt failed");
+                    tracing::info!(URI = %candidate, error = %err, "execution attempt failed");
                     self.policy.note_failure(candidate);
-                    err = Some(e)
+                    last_error = Some(err);
                 }
             }
         }
 
-        if let Some(err) = err {
+        if let Some(err) = last_error {
             Ok(Err(err))
         } else {
             Err(SrvClientError::NoUriCandidates)
@@ -254,7 +289,8 @@ macro_rules! execute {
     ($client:expr, $f:expr) => {
         async {
             let cache = $client.get_valid_cache_items().await?;
-            $client.execute_with($f, $client.uris(&cache)).await
+            let mode = $crate::client::ExecutionMode::Serial;
+            $client.execute($f, $client.uris(&cache), mode).await
         }
     };
 }

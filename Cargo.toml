@@ -22,8 +22,10 @@ log = ["tracing"]
 [dependencies]
 arc-swap = "^0.4"
 async-trait = "^0.1"
+futures-util = "^0.3"
 http = "^0.2"
 libresolv-sys = { version = "^0.2", optional = true }
+pin-utils = "^0.1"
 rand = "^0.7"
 thiserror = "^1"
 tracing = { version = "^0.1", optional = true }
