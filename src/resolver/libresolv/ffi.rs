@@ -81,12 +81,12 @@ pub fn ns_msg_count(
 }
 
 pub use libresolv_sys::__dn_expand as dn_expand;
-pub use libresolv_sys::__ns_class_ns_c_any as ns_c_any;
+pub use libresolv_sys::__ns_class_ns_c_in as ns_c_in;
 pub use libresolv_sys::__ns_sect_ns_s_an as ns_s_an;
 pub use libresolv_sys::__ns_type_ns_t_srv as ns_t_srv;
 pub use libresolv_sys::__res_nclose as res_nclose;
 pub use libresolv_sys::__res_ninit as res_ninit;
-pub use libresolv_sys::__res_nquery as res_nquery;
+pub use libresolv_sys::__res_nsearch as res_nsearch;
 pub use libresolv_sys::__res_state as res_state;
 pub use libresolv_sys::ns_initparse;
 pub use libresolv_sys::ns_msg;

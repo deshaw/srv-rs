@@ -56,24 +56,23 @@ impl SrvResolver for LibResolv {
             let mut state = state.borrow_mut();
             let len = loop {
                 let len = unsafe {
-                    ffi::res_nquery(
+                    ffi::res_nsearch(
                         state.as_mut(),
                         srv.as_ptr(),
-                        ffi::ns_c_any as i32,
+                        ffi::ns_c_in as i32,
                         ffi::ns_t_srv as i32,
                         buf.as_mut_ptr(),
                         buf.len() as i32,
                     )
                 };
-                // Retry with larger buffer on TRY_AGAIN or `len` larger than buffer
                 let len = match state.check(len) {
                     Ok(()) => len as usize,
-                    Err(ffi::ResolverError::TryAgain) => buf.len() * 2,
                     Err(e) => return Err(e.into()),
                 };
                 if len <= buf.len() {
                     break len;
                 } else if len <= ffi::NS_MAXMSG as usize {
+                    // Retry with larger buffer
                     buf.resize(len, 0)
                 } else {
                     return Err(LibResolvError::AnswerTooLarge);
