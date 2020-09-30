@@ -1,20 +1,19 @@
 //! Clients based on SRV lookups.
 
 use crate::{record::SrvRecord, resolver::SrvResolver};
-use arc_swap::{ArcSwap, Guard};
+use arc_swap::ArcSwap;
 use futures_util::{
     stream::{self, Stream, StreamExt},
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{error::Error, future::Future, ops::Deref, sync::Arc, time::Duration};
+use std::{error::Error, future::Future, iter::FromIterator, sync::Arc, time::Duration};
 
 mod cache;
 use cache::Cache;
 
 /// SRV target selection policies.
 pub mod policy;
-use policy::IntoUriIter;
 
 /// Errors encountered during SRV record resolution
 #[derive(Debug, thiserror::Error)]
@@ -114,72 +113,71 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
     /// Gets a client's cached items, refreshing the existing cache if it is invalid.
     pub async fn get_valid_cache_items(
         &self,
-    ) -> Result<impl Deref<Target = [Policy::CacheItem]>, SrvError<Resolver::Error>> {
-        let cache = match self.cache.load() {
-            cache if cache.valid() => cache,
-            _ => Guard::from_inner(self.refresh_cache().await?),
-        };
-        Ok(Cache::items(cache))
-    }
-
-    /// Determines an ordering of URIs to select based on the current [`Policy`].
-    ///
-    /// [`Policy`]: policy/trait.Policy.html
-    pub fn uris<'a>(&'a self, cached: &'a [Policy::CacheItem]) -> <Policy as IntoUriIter<'a>>::Iter
-    where
-        Policy: IntoUriIter<'a>,
-    {
-        IntoUriIter::uris(&self.policy, cached)
-    }
-
-    /// Performs an operation on each of the URIs in `candidates`.
-    pub async fn execute<'a, F, T, E>(
-        &self,
-        mut func: impl FnMut(&'a Uri) -> F,
-        candidates: impl IntoIterator<Item = &'a Uri>,
-        execution_mode: ExecutionMode,
-    ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>>
-    where
-        E: Error,
-        F: Future<Output = Result<T, E>> + 'a,
-    {
-        match execution_mode {
-            ExecutionMode::Serial => {
-                let results = stream::iter(candidates)
-                    .then(|candidate| func(candidate).map(move |res| (candidate, res)));
-                self.process_results(results).await
-            }
-            ExecutionMode::Concurrent => {
-                let results: stream::FuturesUnordered<_> = candidates
-                    .into_iter()
-                    .map(|candidate| func(candidate).map(move |res| (candidate, res)))
-                    .collect();
-                self.process_results(results).await
-            }
+    ) -> Result<Arc<Cache<Policy::CacheItem>>, SrvError<Resolver::Error>> {
+        match self.cache.load_full() {
+            cache if cache.valid() => Ok(cache),
+            _ => self.refresh_cache().await,
         }
     }
 
-    async fn process_results<T, E: Error>(
-        &self,
-        results: impl Stream<Item = (&Uri, Result<T, E>)>,
-    ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>> {
-        pin_utils::pin_mut!(results);
-
-        let mut last_error = None;
-        while let Some((candidate, result)) = results.next().await {
+    /// Performs an operation on a client's SRV targets, producing a stream of
+    /// results.
+    pub async fn execute<'a, T, E: Error, Fut>(
+        &'a self,
+        mut func: impl FnMut(Uri) -> Fut + 'a,
+        execution_mode: ExecutionMode,
+    ) -> Result<impl Stream<Item = Result<T, E>> + 'a, SrvClientError<Resolver::Error>>
+    where
+        Fut: Future<Output = Result<T, E>> + 'a,
+    {
+        let cache = self.get_valid_cache_items().await?;
+        let order = self.policy.order(cache.items());
+        let func = {
+            let cache = cache.clone();
+            move |idx| {
+                let candidate = Policy::cache_item_to_uri(&cache.items()[idx]);
+                func(candidate.to_owned()).map(move |res| (idx, res))
+            }
+        };
+        let results = match execution_mode {
+            ExecutionMode::Serial => stream::iter(order).then(func).left_stream(),
+            ExecutionMode::Concurrent => {
+                stream::FuturesUnordered::from_iter(order.map(func)).right_stream()
+            }
+        };
+        let results = results.map(move |(candidate_idx, result)| {
+            let candidate = Policy::cache_item_to_uri(&cache.items()[candidate_idx]);
             match result {
                 Ok(res) => {
                     #[cfg(feature = "log")]
                     tracing::info!(URI = %candidate, "execution attempt succeeded");
                     self.policy.note_success(candidate);
-                    return Ok(Ok(res));
+                    Ok(res)
                 }
                 Err(err) => {
                     #[cfg(feature = "log")]
                     tracing::info!(URI = %candidate, error = %err, "execution attempt failed");
                     self.policy.note_failure(candidate);
-                    last_error = Some(err);
+                    Err(err)
                 }
+            }
+        });
+        Ok(results)
+    }
+
+    /// Returns the first `Ok` from a stream of `Result` or the last `Err` if
+    /// there are no `Ok`s.
+    pub async fn first_successful_result<T, E: Error>(
+        &self,
+        results: impl Stream<Item = Result<T, E>>,
+    ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>> {
+        pin_utils::pin_mut!(results);
+
+        let mut last_error = None;
+        while let Some(result) = results.next().await {
+            match result {
+                Ok(res) => return Ok(Ok(res)),
+                Err(err) => last_error = Some(err),
             }
         }
 
@@ -256,12 +254,12 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
 /// # async fn main() -> Result<(), SrvClientError<LibResolvError>> {
 /// let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org");
 ///
-/// let res = srv_rs::execute!(client, |address: &http::Uri| async move {
+/// let res = srv_rs::execute!(client, |address: http::Uri| async move {
 ///     Ok::<_, Infallible>(address.to_string())
 /// }).await?;
 /// assert!(res.is_ok());
 ///
-/// let res = srv_rs::execute!(client, |address: &http::Uri| async move {
+/// let res = srv_rs::execute!(client, |address: http::Uri| async move {
 ///     address.to_string().parse::<usize>()
 /// }).await?;
 /// assert!(res.is_err());
@@ -287,10 +285,21 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
 #[macro_export]
 macro_rules! execute {
     ($client:expr, $f:expr) => {
+        $crate::execute!($client => one, $f)
+    };
+    ($client:expr => $target:tt, $f:expr) => {
+        $crate::execute!($client => $target, $crate::client::ExecutionMode::Serial, $f)
+    };
+    ($client:expr, $mode:expr, $f:expr) => {
+        $crate::execute!($client => one, $mode, $f)
+    };
+    ($client:expr => one, $mode:expr, $f:expr) => {
         async {
-            let cache = $client.get_valid_cache_items().await?;
-            let mode = $crate::client::ExecutionMode::Serial;
-            $client.execute($f, $client.uris(&cache), mode).await
+            let results = $crate::execute!($client => many, $mode, $f).await?;
+            $client.first_successful_result(results).await
         }
+    };
+    ($client:expr => many, $mode:expr, $f:expr) => {
+        $client.execute($f, $mode)
     };
 }

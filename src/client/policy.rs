@@ -2,7 +2,7 @@ use crate::client::{Cache, SrvClient, SrvError, SrvRecord, SrvResolver};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use http::Uri;
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 /// Policy for [`SrvClient`] to use when selecting SRV targets to recommend.
 ///
@@ -12,11 +12,23 @@ pub trait Policy: Sized {
     /// Type of item stored in a client's cache.
     type CacheItem;
 
+    /// Iterator of indices used to order cache items.
+    type Ordering: Iterator<Item = usize>;
+
     /// Obtains a refreshed cache for a client.
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
         client: &SrvClient<Resolver, Self>,
     ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>>;
+
+    /// Creates an iterator of indices corresponding to cache items in the
+    /// order a [`SrvClient`] should try using them to perform an operation.
+    ///
+    /// [`SrvClient`]: ../struct.SrvClient.html
+    fn order(&self, items: &[Self::CacheItem]) -> Self::Ordering;
+
+    /// Converts a reference to a cached item into a reference to a `Uri`.
+    fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri;
 
     /// Makes any policy adjustments following a successful execution on `uri`.
     #[allow(unused_variables)]
@@ -25,25 +37,6 @@ pub trait Policy: Sized {
     /// Makes any policy adjustments following a failed execution on `uri`.
     #[allow(unused_variables)]
     fn note_failure(&self, uri: &Uri) {}
-}
-
-/// Ability of a [`Policy`] to define an ordering of SRV targets to
-/// select from the items of a [`SrvClient`]'s cache.
-///
-/// When [Generic Associated Types](https://github.com/rust-lang/rust/issues/44265)
-/// are stable, this should be combined with [`Policy`] by adding an associated
-/// type `Policy::UriIter<'a>` that is produced by a method `Policy::uris`.
-///
-/// [`Policy`]: trait.Policy.html
-/// [`SrvClient`]: ../struct.SrvClient.html
-pub trait IntoUriIter<'a>: Policy {
-    /// Kind of iterator produced.
-    type Iter: Iterator<Item = &'a Uri>;
-
-    /// Creates an iterator of `Uri`s in the order a [`SrvClient`] should use them.
-    ///
-    /// [`SrvClient`]: ../struct.SrvClient.html
-    fn uris(&'a self, cached: &'a [Self::CacheItem]) -> Self::Iter;
 }
 
 /// Policy that selects targets based on past successes--if a target was used
@@ -56,6 +49,7 @@ pub struct Affinity {
 #[async_trait]
 impl Policy for Affinity {
     type CacheItem = Uri;
+    type Ordering = AffinityUriIter;
 
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
@@ -65,28 +59,28 @@ impl Policy for Affinity {
         Ok(Cache::new(uris, min_ttl))
     }
 
+    fn order(&self, uris: &[Uri]) -> Self::Ordering {
+        let preferred = self.last_working_target.load();
+        Affinity::uris_preferring(uris, preferred.as_deref())
+    }
+
+    fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri {
+        item
+    }
+
     fn note_success(&self, uri: &Uri) {
         self.last_working_target.store(Some(Arc::new(uri.clone())));
     }
 }
 
-impl<'a> IntoUriIter<'a> for Affinity {
-    type Iter = AffinityUriIter<'a>;
-
-    fn uris(&'a self, cached: &'a [Uri]) -> Self::Iter {
-        let preferred = self.last_working_target.load();
-        Affinity::uris_preferring(cached, preferred.as_deref())
-    }
-}
-
 impl Affinity {
-    fn uris_preferring<'a>(cached: &'a [Uri], preferred: Option<&Uri>) -> AffinityUriIter<'a> {
+    fn uris_preferring(uris: &[Uri], preferred: Option<&Uri>) -> AffinityUriIter {
         let preferred = preferred
             .as_deref()
-            .and_then(|preferred| cached.iter().position(|uri| uri == preferred))
+            .and_then(|preferred| uris.as_ref().iter().position(|uri| uri == preferred))
             .unwrap_or(0);
         AffinityUriIter {
-            uris: &cached,
+            n: uris.len(),
             preferred,
             next: None,
         }
@@ -96,8 +90,9 @@ impl Affinity {
 /// Iterator over `Uri`s based on affinity. See [`Affinity`].
 ///
 /// [`Affinity`]: struct.Affinity.html
-pub struct AffinityUriIter<'a> {
-    uris: &'a [Uri],
+pub struct AffinityUriIter {
+    /// Number of uris in the cache.e
+    n: usize,
     /// Index of the URI to produce first (i.e. the preferred URI).
     /// `0` if the first is preferred or there is no preferred URI at all.
     preferred: usize,
@@ -106,8 +101,8 @@ pub struct AffinityUriIter<'a> {
     next: Option<usize>,
 }
 
-impl<'a> Iterator for AffinityUriIter<'a> {
-    type Item = &'a Uri;
+impl Iterator for AffinityUriIter {
+    type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (idx, next) = match self.next {
@@ -119,7 +114,11 @@ impl<'a> Iterator for AffinityUriIter<'a> {
             Some(next) => (next, next + 1),
         };
         self.next = Some(next);
-        self.uris.get(idx)
+        if idx < self.n {
+            Some(idx)
+        } else {
+            None
+        }
     }
 }
 
@@ -148,6 +147,7 @@ impl ParsedRecord {
 #[async_trait]
 impl Policy for Rfc2782 {
     type CacheItem = ParsedRecord;
+    type Ordering = <Vec<usize> as IntoIterator>::IntoIter;
 
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
@@ -165,22 +165,19 @@ impl Policy for Rfc2782 {
         let min_ttl = records.iter().map(|record| record.ttl()).min();
         Ok(Cache::new(parsed, min_ttl.unwrap_or_default()))
     }
-}
 
-impl<'a> IntoUriIter<'a> for Rfc2782 {
-    type Iter = Rfc2782UriIter<'a, <Vec<usize> as IntoIterator>::IntoIter>;
-
-    fn uris(&'a self, cached: &'a [ParsedRecord]) -> Self::Iter {
-        let mut indices = (0..cached.len()).collect::<Vec<_>>();
+    fn order(&self, records: &[ParsedRecord]) -> Self::Ordering {
+        let mut indices = (0..records.len()).collect::<Vec<_>>();
         let mut rng = rand::thread_rng();
         indices.sort_by_cached_key(|&idx| {
-            let (priority, weight) = (cached[idx].priority, cached[idx].weight);
+            let (priority, weight) = (records[idx].priority, records[idx].weight);
             crate::record::sort_key(priority, weight, &mut rng)
         });
-        Rfc2782UriIter {
-            uris: cached,
-            order: indices.into_iter(),
-        }
+        indices.into_iter()
+    }
+
+    fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri {
+        &item.uri
     }
 }
 
@@ -188,17 +185,23 @@ impl<'a> IntoUriIter<'a> for Rfc2782 {
 /// See [`Rfc2782`].
 ///
 /// [`Rfc2782`]: struct.Rfc2782.html
-pub struct Rfc2782UriIter<'a, T: Iterator<Item = usize>> {
-    uris: &'a [ParsedRecord],
-    order: T,
+pub struct Rfc2782UriIter<'a, Uris, Order> {
+    lifetime: PhantomData<&'a ()>,
+    uris: Uris,
+    order: Order,
 }
 
-impl<'a, T: Iterator<Item = usize>> Iterator for Rfc2782UriIter<'a, T> {
+impl<'a, Uris, Order> Iterator for Rfc2782UriIter<'a, Uris, Order>
+where
+    Uris: AsRef<[ParsedRecord]>,
+    Order: Iterator<Item = usize>,
+{
     type Item = &'a Uri;
 
     fn next(&mut self) -> Option<Self::Item> {
         let idx = self.order.next()?;
-        self.uris.get(idx).map(|parsed| &parsed.uri)
+        let uri = self.uris.as_ref().get(idx).map(|parsed| &parsed.uri);
+        unsafe { std::mem::transmute(uri) }
     }
 }
 
@@ -208,22 +211,15 @@ fn affinity_uris_iter_order() {
     let amazon: Uri = "https://amazon.com".parse().unwrap();
     let desco: Uri = "https://deshaw.com".parse().unwrap();
     let cache = vec![google.clone(), amazon.clone(), desco.clone()];
-    assert_eq!(
-        Affinity::uris_preferring(&cache, None).collect::<Vec<_>>(),
-        vec![&google, &amazon, &desco]
-    );
-    assert_eq!(
-        Affinity::uris_preferring(&cache, Some(&google)).collect::<Vec<_>>(),
-        vec![&google, &amazon, &desco]
-    );
-    assert_eq!(
-        Affinity::uris_preferring(&cache, Some(&amazon)).collect::<Vec<_>>(),
-        vec![&amazon, &google, &desco]
-    );
-    assert_eq!(
-        Affinity::uris_preferring(&cache, Some(&desco)).collect::<Vec<_>>(),
-        vec![&desco, &google, &amazon]
-    );
+    let order = |preferred| {
+        Affinity::uris_preferring(&cache, preferred)
+            .map(|idx| &cache[idx])
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(order(None), vec![&google, &amazon, &desco]);
+    assert_eq!(order(Some(&google)), vec![&google, &amazon, &desco]);
+    assert_eq!(order(Some(&amazon)), vec![&amazon, &google, &desco]);
+    assert_eq!(order(Some(&desco)), vec![&desco, &google, &amazon]);
 }
 
 #[test]
@@ -246,17 +242,17 @@ fn balance_uris_iter_order() {
         })
         .collect::<Vec<_>>();
 
-    let ordered = |iter| {
+    let ordered = |iter: <Rfc2782 as Policy>::Ordering| {
         let mut last = None;
-        for item in iter {
+        for item in iter.map(|idx| &cache[idx]) {
             if let Some(last) = last {
-                assert!(priorities[last] <= priorities[item]);
+                assert!(priorities[last] <= priorities[&item.uri]);
             }
-            last = Some(item);
+            last = Some(&item.uri);
         }
     };
 
     for _ in 0..5 {
-        ordered(Rfc2782.uris(&cache));
+        ordered(Rfc2782.order(&cache));
     }
 }

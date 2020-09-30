@@ -1,4 +1,4 @@
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 /*!
 Rust client for communicating with services located by DNS SRV records.
@@ -33,10 +33,10 @@ It presents this service in the following interface:
 # async fn main() {
 use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-srv_rs::execute!(client, |address: &http::Uri| async move {
+srv_rs::execute!(client, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
-    hyper::Client::new().get(address.to_owned()).await
+    hyper::Client::new().get(address).await
 }).await;
 # }
 ```
