@@ -8,7 +8,10 @@ use futures_util::{
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{error::Error, future::Future, iter::FromIterator, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    error::Error, fmt::Debug, future::Future, iter::FromIterator, pin::Pin, sync::Arc,
+    time::Duration,
+};
 
 mod cache;
 use cache::Cache;
@@ -18,14 +21,23 @@ pub mod policy;
 
 /// Errors encountered during SRV record resolution
 #[derive(Debug, thiserror::Error)]
-pub enum SrvError<Lookup: Error + 'static> {
+pub enum SrvError<Lookup: Debug> {
     /// Srv lookup errors
     #[error("srv lookup error")]
     Lookup(Lookup),
     /// Srv record parsing errors
     #[error("building uri from srv record: {0}")]
     RecordParsing(#[from] http::Error),
+    /// Produced when there are no SRV targets for a client to use
+    #[error(transparent)]
+    NoTargets(#[from] NoSRVTargets),
 }
+
+/// Error produced when there are no SRV targets to use--i.e., when no SRV
+/// records were found.
+#[derive(Debug, thiserror::Error)]
+#[error("no SRV targets to use")]
+pub struct NoSRVTargets;
 
 /// Client for intelligently performing operations on a service located by SRV records.
 #[derive(Debug)]
@@ -45,6 +57,12 @@ pub enum ExecutionMode {
     /// Operations are performed *concurrently* (i.e. all at once).
     /// Note that this does not imply parallelism--no additional tasks are spawned.
     Concurrent,
+}
+
+impl Default for ExecutionMode {
+    fn default() -> Self {
+        Self::Serial
+    }
 }
 
 impl<Resolver: SrvResolver + Default, Policy: policy::Policy + Default>
@@ -101,7 +119,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
     }
 
     /// Gets a client's cached items, refreshing the existing cache if it is invalid.
-    pub async fn get_valid_cache_items(
+    async fn get_valid_cache(
         &self,
     ) -> Result<Arc<Cache<Policy::CacheItem>>, SrvError<Resolver::Error>> {
         match self.cache.load_full() {
@@ -114,13 +132,14 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
     /// results.
     pub async fn execute<'a, T, E: Error, Fut>(
         &'a self,
-        mut func: impl FnMut(Uri) -> Fut + 'a,
         execution_mode: ExecutionMode,
+        func: impl FnMut(Uri) -> Fut + 'a,
     ) -> Result<ExecuteResults<impl Stream<Item = Result<T, E>> + 'a>, SrvError<Resolver::Error>>
     where
         Fut: Future<Output = Result<T, E>> + 'a,
     {
-        let cache = self.get_valid_cache_items().await?;
+        let mut func = func;
+        let cache = self.get_valid_cache().await?;
         let order = self.policy.order(cache.items());
         let func = {
             let cache = cache.clone();
@@ -228,7 +247,7 @@ impl<S: Stream> Stream for ExecuteResults<S> {
 impl<S> ExecuteResults<S> {
     /// Returns the first `Result::Ok` or the last `Result::Err` in a stream
     /// of results, or `None` if there are no results at all.
-    pub async fn first_ok<T, E: Error>(self) -> Option<Result<T, E>>
+    pub async fn first_success<T, E>(self) -> Result<Result<T, E>, NoSRVTargets>
     where
         S: Stream<Item = Result<T, E>>,
     {
@@ -238,30 +257,29 @@ impl<S> ExecuteResults<S> {
         let mut last_error = None;
         while let Some(result) = results.next().await {
             match result {
-                Ok(res) => return Some(Ok(res)),
+                Ok(res) => return Ok(Ok(res)),
                 Err(err) => last_error = Some(err),
             }
         }
 
         if let Some(err) = last_error {
-            Some(Err(err))
+            Ok(Err(err))
         } else {
-            None
+            Err(NoSRVTargets)
         }
     }
 }
 
-/// Perform some operation serially for each target server in the SRV record,
-/// stopping and returning the first success or returning the last error.
+/// Performs an operation on a [`SrvClient`]'s SRV targets.
 ///
 /// # Examples
 ///
 /// ```
-/// # use srv_rs::{client::{SrvClient, SrvClientError}};
+/// # use srv_rs::{client::{SrvClient, SrvError}};
 /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
 /// # use std::convert::Infallible;
 /// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvClientError<LibResolvError>> {
+/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
 /// let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org");
 ///
 /// let res = srv_rs::execute!(client, |address: http::Uri| async move {
@@ -277,13 +295,16 @@ impl<S> ExecuteResults<S> {
 /// # }
 /// ```
 ///
-/// ## Custom Policy
+/// ## SRV Target Selection Policies
+///
+/// Custom policies for SRV target selection can be set on a [`SrvClient`]:
+///
 /// ```
-/// # use srv_rs::{client::{SrvClient, SrvClientError, policy::{Policy, Rfc2782}}};
+/// # use srv_rs::{client::{SrvClient, SrvError, policy::{Policy, Rfc2782}}};
 /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
 /// # use std::convert::Infallible;
 /// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvClientError<LibResolvError>> {
+/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
 /// let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org").policy(Rfc2782);
 /// let res = srv_rs::execute!(client, |address| async move {
 ///     Ok::<_, Infallible>(address.to_string())
@@ -292,26 +313,51 @@ impl<S> ExecuteResults<S> {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// ## Execution Modes
+///
+/// By default, the operation will be executed on SRV targets *serially* (i.e.
+/// one after another). To execute the operations *concurrently*, an [`ExecutionMode`]
+/// can be specified as the second argument:
+///
+/// ```
+/// # use srv_rs::client::{SrvClient, SrvError};
+/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+/// # use std::convert::Infallible;
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+/// # let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org");
+/// use srv_rs::client::ExecutionMode;
+/// let res = srv_rs::execute!(client, ExecutionMode::Concurrent, |address| async move {
+///     Ok::<_, Infallible>(address.to_string())
+/// }).await?;
+/// assert!(res.is_ok());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// **Note:** *concurrent* does not imply *parallel*--no tasks are spawned in
+/// the concurrent execution mode.
+///
+/// [`ExecutionMode`]: client/enum.ExecutionMode.html
+/// [`SrvClient`]: client/struct.SrvClient.html
 #[macro_export]
 macro_rules! execute {
     ($client:expr, $f:expr) => {
-        $crate::execute!($client => one, $f)
-    };
-    ($client:expr => $target:tt, $f:expr) => {
-        $crate::execute!($client => $target, $crate::client::ExecutionMode::Serial, $f)
+        $crate::execute!($client, Default::default(), $f)
     };
     ($client:expr, $mode:expr, $f:expr) => {
-        $crate::execute!($client => one, $mode, $f)
-    };
-    ($client:expr => one, $mode:expr, $f:expr) => {
         async {
-            match $crate::execute!($client => many, $mode, $f).await {
-                Ok(results) => Ok(results.first_ok().await),
+            match $crate::execute!($client => stream, $mode, $f).await {
+                Ok(results) => results.first_success().await.map_err(Into::into),
                 Err(e) => Err(e),
             }
         }
     };
-    ($client:expr => many, $mode:expr, $f:expr) => {
-        $client.execute($f, $mode)
+    ($client:expr => stream, $f:expr) => {
+        $client.execute(Default::default(), $f)
+    };
+    ($client:expr => stream, $mode:expr, $f:expr) => {
+        $client.execute($mode, $f)
     };
 }
