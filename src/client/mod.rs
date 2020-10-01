@@ -4,10 +4,11 @@ use crate::{record::SrvRecord, resolver::SrvResolver};
 use arc_swap::ArcSwap;
 use futures_util::{
     stream::{self, Stream, StreamExt},
+    task::{Context, Poll},
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{error::Error, future::Future, iter::FromIterator, sync::Arc, time::Duration};
+use std::{error::Error, future::Future, iter::FromIterator, pin::Pin, sync::Arc, time::Duration};
 
 mod cache;
 use cache::Cache;
@@ -24,17 +25,6 @@ pub enum SrvError<Lookup: Error + 'static> {
     /// Srv record parsing errors
     #[error("building uri from srv record: {0}")]
     RecordParsing(#[from] http::Error),
-}
-
-/// Errors encountered by the SrvClient
-#[derive(Debug, thiserror::Error)]
-pub enum SrvClientError<Lookup: Error + 'static> {
-    /// Produced when there are no URI candidates for a client to use
-    #[error("no uri candidates")]
-    NoUriCandidates,
-    /// Srv resolution errors
-    #[error(transparent)]
-    Srv(#[from] SrvError<Lookup>),
 }
 
 /// Client for intelligently performing operations on a service located by SRV records.
@@ -126,7 +116,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
         &'a self,
         mut func: impl FnMut(Uri) -> Fut + 'a,
         execution_mode: ExecutionMode,
-    ) -> Result<impl Stream<Item = Result<T, E>> + 'a, SrvClientError<Resolver::Error>>
+    ) -> Result<ExecuteResults<impl Stream<Item = Result<T, E>> + 'a>, SrvError<Resolver::Error>>
     where
         Fut: Future<Output = Result<T, E>> + 'a,
     {
@@ -162,30 +152,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
                 }
             }
         });
-        Ok(results)
-    }
-
-    /// Returns the first `Ok` from a stream of `Result` or the last `Err` if
-    /// there are no `Ok`s.
-    pub async fn first_successful_result<T, E: Error>(
-        &self,
-        results: impl Stream<Item = Result<T, E>>,
-    ) -> Result<Result<T, E>, SrvClientError<Resolver::Error>> {
-        pin_utils::pin_mut!(results);
-
-        let mut last_error = None;
-        while let Some(result) = results.next().await {
-            match result {
-                Ok(res) => return Ok(Ok(res)),
-                Err(err) => last_error = Some(err),
-            }
-        }
-
-        if let Some(err) = last_error {
-            Ok(Err(err))
-        } else {
-            Err(SrvClientError::NoUriCandidates)
-        }
+        Ok(ExecuteResults(results))
     }
 
     fn parse_record(&self, record: &Resolver::Record) -> Result<Uri, http::Error> {
@@ -237,6 +204,49 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
         Self {
             path_prefix: path_prefix.to_string(),
             ..self
+        }
+    }
+}
+
+/// Stream of results.
+pub struct ExecuteResults<S>(S);
+
+impl<S: Stream> Stream for ExecuteResults<S> {
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // This is okay because the inner stream is pinned when `self` is.
+        let stream = unsafe { self.map_unchecked_mut(|s| &mut s.0) };
+        stream.poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<S> ExecuteResults<S> {
+    /// Returns the first `Result::Ok` or the last `Result::Err` in a stream
+    /// of results, or `None` if there are no results at all.
+    pub async fn first_ok<T, E: Error>(self) -> Option<Result<T, E>>
+    where
+        S: Stream<Item = Result<T, E>>,
+    {
+        let results = self;
+        pin_utils::pin_mut!(results);
+
+        let mut last_error = None;
+        while let Some(result) = results.next().await {
+            match result {
+                Ok(res) => return Some(Ok(res)),
+                Err(err) => last_error = Some(err),
+            }
+        }
+
+        if let Some(err) = last_error {
+            Some(Err(err))
+        } else {
+            None
         }
     }
 }
@@ -295,8 +305,10 @@ macro_rules! execute {
     };
     ($client:expr => one, $mode:expr, $f:expr) => {
         async {
-            let results = $crate::execute!($client => many, $mode, $f).await?;
-            $client.first_successful_result(results).await
+            match $crate::execute!($client => many, $mode, $f).await {
+                Ok(results) => Ok(results.first_ok().await),
+                Err(e) => Err(e),
+            }
         }
     };
     ($client:expr => many, $mode:expr, $f:expr) => {
