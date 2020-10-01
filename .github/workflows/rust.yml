@@ -6,15 +6,34 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-16.04
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Build (no default features)
-      run: cargo build --verbose --no-default-features
-    - name: Build (default features)
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v2
+      - name: Build (no default features)
+        run: cargo build --verbose --no-default-features
+      - name: Build (default features)
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test --verbose
+
+  rustfmt:
+    runs-on: ubuntu-16.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@rustfmt
+      - run: cargo fmt -- --check
+
+  clippy:
+    run-on: ubuntu-16.04
+    steps:
+      - uses: actions/checkout@2
+      - uses: dtolnay/rust-toolchain@clippy
+      - run: cargo clippy --tests -- -Dclippy::all
+
+  cargo-readme:
+    run-on: ubuntu-16.04
+    steps:
+      - uses: actions/checkout@2
+      - run: cargo install cargo-readme
+      - run: diff README.md <(cargo readme)
