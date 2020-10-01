@@ -21,19 +21,18 @@ jobs:
     runs-on: ubuntu-16.04
     steps:
       - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@rustfmt
       - run: cargo fmt -- --check
 
   clippy:
-    run-on: ubuntu-16.04
+    runs-on: ubuntu-16.04
     steps:
-      - uses: actions/checkout@2
+      - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@clippy
       - run: cargo clippy --tests -- -Dclippy::all
 
   cargo-readme:
-    run-on: ubuntu-16.04
+    runs-on: ubuntu-16.04
     steps:
-      - uses: actions/checkout@2
+      - uses: actions/checkout@v2
       - run: cargo install cargo-readme
       - run: diff README.md <(cargo readme)
