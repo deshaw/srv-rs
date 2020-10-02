@@ -86,7 +86,9 @@ impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver
             cache: Default::default(),
         }
     }
+}
 
+impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     async fn get_srv_records(&self) -> Result<Vec<Resolver::Record>, SrvError<Resolver::Error>> {
         self.resolver
             .get_srv_records(&self.srv)
