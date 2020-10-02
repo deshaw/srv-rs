@@ -6,7 +6,7 @@ use srv_rs::{
     resolver::libresolv::LibResolv,
 };
 
-const SRV_NAME: &str = "_http._tcp.srv-client-rust.deshaw.org";
+const SRV_NAME: &str = srv_rs::EXAMPLE_SRV;
 const SRV_DESCRIPTION: &str = SRV_NAME;
 
 pub fn criterion_benchmark(c: &mut Criterion) {

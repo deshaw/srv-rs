@@ -275,21 +275,23 @@ impl<S> ExecuteResults<S> {
 /// # Examples
 ///
 /// ```
-/// # use srv_rs::{client::{SrvClient, SrvError}};
+/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
 /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
 /// # use std::convert::Infallible;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org");
+/// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
 ///
 /// let res = srv_rs::execute!(client, |address: http::Uri| async move {
 ///     Ok::<_, Infallible>(address.to_string())
-/// }).await?;
+/// })
+/// .await?;
 /// assert!(res.is_ok());
 ///
 /// let res = srv_rs::execute!(client, |address: http::Uri| async move {
 ///     address.to_string().parse::<usize>()
-/// }).await?;
+/// })
+/// .await?;
 /// assert!(res.is_err());
 /// # Ok(())
 /// # }
@@ -300,17 +302,10 @@ impl<S> ExecuteResults<S> {
 /// Custom policies for SRV target selection can be set on a [`SrvClient`]:
 ///
 /// ```
-/// # use srv_rs::{client::{SrvClient, SrvError, policy::{Policy, Rfc2782}}};
-/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-/// # use std::convert::Infallible;
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org").policy(Rfc2782);
-/// let res = srv_rs::execute!(client, |address| async move {
-///     Ok::<_, Infallible>(address.to_string())
-/// }).await?;
-/// assert!(res.is_ok());
-/// # Ok(())
+/// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
+/// # use srv_rs::client::{SrvClient, policy::Rfc2782};
+/// # fn main() {
+/// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
 /// # }
 /// ```
 ///
@@ -321,16 +316,17 @@ impl<S> ExecuteResults<S> {
 /// can be specified as the second argument:
 ///
 /// ```
-/// # use srv_rs::client::{SrvClient, SrvError};
+/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
 /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
 /// # use std::convert::Infallible;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// # let client = SrvClient::<LibResolv>::new("_http._tcp.srv-client-rust.deshaw.org");
+/// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
 /// use srv_rs::client::ExecutionMode;
 /// let res = srv_rs::execute!(client, ExecutionMode::Concurrent, |address| async move {
 ///     Ok::<_, Infallible>(address.to_string())
-/// }).await?;
+/// })
+/// .await?;
 /// assert!(res.is_ok());
 /// # Ok(())
 /// # }
@@ -339,8 +335,35 @@ impl<S> ExecuteResults<S> {
 /// **Note:** *concurrent* does not imply *parallel*--no tasks are spawned in
 /// the concurrent execution mode.
 ///
+/// ## Streaming Results
+///
+/// By default, `execute` will return the first sucessful result produced by
+/// the operation. To get a [`Stream`] of results, the following
+/// syntax can be used:
+///
+/// ```
+/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
+/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+/// # use std::convert::Infallible;
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+/// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
+/// use futures::stream::StreamExt;
+/// let results = srv_rs::execute!(client => stream, |address| async move {
+///     Ok::<_, Infallible>(address.to_string())
+/// })
+/// .await?;
+/// let results: Vec<Result<_, _>> = results.collect().await;
+/// for result in results {
+///     assert!(result.is_ok());
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
 /// [`ExecutionMode`]: client/enum.ExecutionMode.html
 /// [`SrvClient`]: client/struct.SrvClient.html
+/// [`Stream`]: ../futures_core/stream/trait.Stream.html
 #[macro_export]
 macro_rules! execute {
     ($client:expr, $f:expr) => {

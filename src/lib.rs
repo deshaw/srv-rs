@@ -37,7 +37,8 @@ srv_rs::execute!(client, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
     hyper::Client::new().get(address).await
-}).await;
+})
+.await;
 # }
 ```
 
@@ -66,3 +67,6 @@ pub mod client;
 pub mod record;
 
 pub mod resolver;
+
+#[doc(hidden)]
+pub const EXAMPLE_SRV: &str = "_http._tcp.srv-client-rust.deshaw.org";

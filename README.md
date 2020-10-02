@@ -34,7 +34,8 @@ srv_rs::execute!(client, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
     hyper::Client::new().get(address).await
-}).await;
+})
+.await;
 ```
 
 [`SrvClient::new`] creates a client (that should be reused to take advantage of
