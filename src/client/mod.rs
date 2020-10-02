@@ -272,6 +272,8 @@ impl<S> ExecuteResults<S> {
 
 /// Performs an operation on a [`SrvClient`]'s SRV targets.
 ///
+/// Operations must implement `FnMut(Uri) -> Result<T, E>`.
+///
 /// # Examples
 ///
 /// ```
@@ -288,7 +290,7 @@ impl<S> ExecuteResults<S> {
 /// .await?;
 /// assert!(res.is_ok());
 ///
-/// let res = srv_rs::execute!(client, |address: http::Uri| async move {
+/// let res = srv_rs::execute!(client, |address| async move {
 ///     address.to_string().parse::<usize>()
 /// })
 /// .await?;
@@ -299,7 +301,8 @@ impl<S> ExecuteResults<S> {
 ///
 /// ## SRV Target Selection Policies
 ///
-/// Custom policies for SRV target selection can be set on a [`SrvClient`]:
+/// SRV target selection order is determined by a [`SrvClient`]'s [`Policy`],
+/// and can be set on client construction:
 ///
 /// ```
 /// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
@@ -338,8 +341,8 @@ impl<S> ExecuteResults<S> {
 /// ## Streaming Results
 ///
 /// By default, `execute` will return the first sucessful result produced by
-/// the operation. To get a [`Stream`] of results, the following
-/// syntax can be used:
+/// the operation or the last unsuccessful one if there were no successes.
+/// To get a [`Stream`] of results, the `=> stream` syntax can be used:
 ///
 /// ```
 /// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
@@ -348,12 +351,13 @@ impl<S> ExecuteResults<S> {
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
 /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-/// use futures::stream::StreamExt;
-/// let results = srv_rs::execute!(client => stream, |address| async move {
+/// let results_stream = srv_rs::execute!(client => stream, |address| async move {
 ///     Ok::<_, Infallible>(address.to_string())
 /// })
 /// .await?;
-/// let results: Vec<Result<_, _>> = results.collect().await;
+/// // Do something with the stream, for example collect all results into a `Vec`:
+/// use futures::stream::StreamExt;
+/// let results: Vec<Result<_, _>> = results_stream.collect().await;
 /// for result in results {
 ///     assert!(result.is_ok());
 /// }
@@ -363,6 +367,7 @@ impl<S> ExecuteResults<S> {
 ///
 /// [`ExecutionMode`]: client/enum.ExecutionMode.html
 /// [`SrvClient`]: client/struct.SrvClient.html
+/// [`Policy`]: client/policy/trait.Policy.html
 /// [`Stream`]: ../futures_core/stream/trait.Stream.html
 #[macro_export]
 macro_rules! execute {
