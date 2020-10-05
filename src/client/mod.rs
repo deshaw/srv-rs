@@ -50,7 +50,7 @@ pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
 }
 
 /// Execution mode to use when performing an operation on SRV targets.
-pub enum ExecutionMode {
+pub enum Execution {
     /// Operations are performed *serially* (i.e. one after the other).
     Serial,
     /// Operations are performed *concurrently* (i.e. all at once).
@@ -58,7 +58,7 @@ pub enum ExecutionMode {
     Concurrent,
 }
 
-impl Default for ExecutionMode {
+impl Default for Execution {
     fn default() -> Self {
         Self::Serial
     }
@@ -133,7 +133,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// results.
     pub async fn execute<'a, T, E: Error, Fut>(
         &'a self,
-        execution_mode: ExecutionMode,
+        execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut + 'a,
     ) -> Result<impl Stream<Item = Result<T, E>> + 'a, SrvError<Resolver::Error>>
     where
@@ -150,8 +150,8 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
             }
         };
         let results = match execution_mode {
-            ExecutionMode::Serial => stream::iter(order).then(func).left_stream(),
-            ExecutionMode::Concurrent => {
+            Execution::Serial => stream::iter(order).then(func).left_stream(),
+            Execution::Concurrent => {
                 stream::FuturesUnordered::from_iter(order.map(func)).right_stream()
             }
         };
@@ -180,7 +180,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// the operation was unsuccessful.
     pub async fn execute_one<'a, T, E: Error, Fut>(
         &'a self,
-        execution_mode: ExecutionMode,
+        execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut + 'a,
     ) -> Result<Result<T, E>, SrvError<Resolver::Error>>
     where
@@ -302,7 +302,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 /// ## Execution Modes
 ///
 /// By default, the operation will be executed on SRV targets *serially* (i.e.
-/// one after another). To execute the operations *concurrently*, an [`ExecutionMode`]
+/// one after another). To execute the operations *concurrently*, an [`Execution`]
 /// can be specified as the second argument:
 ///
 /// ```
@@ -312,8 +312,8 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
 /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-/// use srv_rs::client::ExecutionMode;
-/// let res = srv_rs::execute!(client, ExecutionMode::Concurrent, |address| async move {
+/// use srv_rs::client::Execution;
+/// let res = srv_rs::execute!(client, Execution::Concurrent, |address| async move {
 ///     Ok::<_, Infallible>(address.to_string())
 /// })
 /// .await?;
@@ -352,7 +352,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 /// # }
 /// ```
 ///
-/// [`ExecutionMode`]: client/enum.ExecutionMode.html
+/// [`Execution`]: client/enum.Execution.html
 /// [`SrvClient`]: client/struct.SrvClient.html
 /// [`Policy`]: client/policy/trait.Policy.html
 /// [`Stream`]: ../futures_core/stream/trait.Stream.html
