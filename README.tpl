@@ -16,8 +16,10 @@ Add {{crate}} to your dependencies in `Cargo.toml`:
 1. Clone the repo
 2. Make some changes
 3. Test: `cargo test`
-4. Bench: `cargo bench`
-5. If modifying crate-level docs (`src/lib.rs`), update `README.md`:
+4. Format: `cargo fmt`
+5. Clippy: `cargo clippy`
+6. Bench: `cargo bench`
+7. If modifying crate-level docs (`src/lib.rs`) or `README.tpl`, update `README.md`:
     1. `cargo install cargo-readme`
     2. `cargo readme > README.md`
 

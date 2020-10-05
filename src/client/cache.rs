@@ -25,7 +25,7 @@ impl<T> Cache<T> {
 
     /// Determines if a cache is valid.
     pub fn valid(&self) -> bool {
-        self.items.len() > 0 && self.created.elapsed() <= self.max_age
+        !self.items.is_empty() && self.created.elapsed() <= self.max_age
     }
 
     pub fn items<'a>(guard: Guard<'a, Arc<Self>>) -> CacheItemsHandle<T> {

@@ -228,6 +228,9 @@ fn affinity_uris_iter_order() {
 
 #[test]
 fn balance_uris_iter_order() {
+    // Clippy doesn't like that Uri has interior mutability and is being used
+    // as a HashMap key but we aren't doing anything naughty in the test
+    #[allow(clippy::mutable_key_type)]
     let mut priorities = std::collections::HashMap::new();
     priorities.insert("https://google.com".parse::<Uri>().unwrap(), 2);
     priorities.insert("https://cloudflare.com".parse().unwrap(), 2);
