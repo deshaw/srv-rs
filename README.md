@@ -40,7 +40,7 @@ client.execute_one(Execution::Serial, |address: http::Uri| async move {
 
 [`SrvClient::new`] creates a client (that should be reused to take advantage of
 caching) for communicating with the service located by `_http._tcp.example.com`.
-The [`execute`] macro takes in a future-producing closure (emulating async
+[`SrvClient::execute_one`] takes in a future-producing closure (emulating async
 closures, which are currently unstable) and executes the closure on a series of
 targets parsed from the discovered SRV records, stopping and returning the
 first `Ok` or last `Err` it obtains.
@@ -53,7 +53,7 @@ successfully. Both of these behaviors can be changed by implementing the
 [`SrvResolver`] and [`Policy`] traits, respectively.
 
 [`SrvClient::new`]: client/struct.SrvClient.html#method.new
-[`execute`]: macro.execute.html
+[`SrvClient::execute_one`]: client/struct.SrvClient.html#method.execute_one
 [`SrvResolver`]: resolver/trait.SrvResolver.html
 [`Policy`]: client/policy/trait.Policy.html
 
