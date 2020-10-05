@@ -66,9 +66,7 @@ impl Default for Execution {
     }
 }
 
-impl<Resolver: SrvResolver + Default, Policy: policy::Policy + Default>
-    SrvClient<Resolver, Policy>
-{
+impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
     /// Creates a new client for communicating with services located by `srv_name`.
     ///
     /// # Examples
@@ -83,7 +81,7 @@ impl<Resolver: SrvResolver + Default, Policy: policy::Policy + Default>
     }
 }
 
-impl<Resolver: SrvResolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
+impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
     /// Creates a new client for communicating with services located by `srv_name`.
     pub fn new_with_resolver(srv_name: impl ToString, resolver: Resolver) -> Self {
         Self {
@@ -265,7 +263,9 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     fn parse_record(&self, record: &Resolver::Record) -> Result<Uri, http::Error> {
         record.parse(self.http_scheme.clone(), self.path_prefix.as_str())
     }
+}
 
+impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// Sets the SRV name of the client.
     pub fn srv_name(self, srv_name: impl ToString) -> Self {
         Self {
