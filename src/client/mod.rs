@@ -28,15 +28,9 @@ pub enum SrvError<Lookup: Debug> {
     #[error("building uri from srv record: {0}")]
     RecordParsing(#[from] http::Error),
     /// Produced when there are no SRV targets for a client to use
-    #[error(transparent)]
-    NoTargets(#[from] NoSRVTargets),
+    #[error("no SRV targets to use")]
+    NoTargets,
 }
-
-/// Error produced when there are no SRV targets to use--i.e., when no SRV
-/// records were found.
-#[derive(Debug, thiserror::Error)]
-#[error("no SRV targets to use")]
-pub struct NoSRVTargets;
 
 /// Client for intelligently performing operations on a service located by SRV records.
 ///
@@ -264,7 +258,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         if let Some(err) = last_error {
             Ok(Err(err))
         } else {
-            Err(NoSRVTargets.into())
+            Err(SrvError::NoTargets)
         }
     }
 
