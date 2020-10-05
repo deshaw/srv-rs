@@ -234,13 +234,13 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn execute_one<'a, T, E: Error, Fut>(
-        &'a self,
+    pub async fn execute_one<T, E: Error, Fut>(
+        &self,
         execution_mode: Execution,
-        func: impl FnMut(Uri) -> Fut + 'a,
+        func: impl FnMut(Uri) -> Fut,
     ) -> Result<Result<T, E>, SrvError<Resolver::Error>>
     where
-        Fut: Future<Output = Result<T, E>> + 'a,
+        Fut: Future<Output = Result<T, E>>,
     {
         let results = self.execute(execution_mode, func).await?;
         pin_mut!(results);
