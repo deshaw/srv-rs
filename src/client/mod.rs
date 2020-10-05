@@ -39,6 +39,14 @@ pub enum SrvError<Lookup: Debug> {
 pub struct NoSRVTargets;
 
 /// Client for intelligently performing operations on a service located by SRV records.
+///
+/// ## SRV Target Selection Policies
+///
+/// SRV target selection order is determined by a client's [`Policy`],
+/// and can be set with [`SrvClient::policy`].
+///
+/// [`Policy`]: policy/trait.Policy.html
+/// [`SrvClient::policy`]: struct.SrvClient.html#method.policy
 #[derive(Debug)]
 pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
     srv: String,
@@ -68,6 +76,14 @@ impl<Resolver: SrvResolver + Default, Policy: policy::Policy + Default>
     SrvClient<Resolver, Policy>
 {
     /// Creates a new client for communicating with services located by `srv_name`.
+    ///
+    /// # Examples
+    /// ```
+    /// # use srv_rs::{EXAMPLE_SRV, client::SrvClient, resolver::libresolv::LibResolv};
+    /// # fn main() {
+    /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
+    /// # }
+    /// ```
     pub fn new(srv_name: impl ToString) -> Self {
         Self::new_with_resolver(srv_name, Resolver::default())
     }
@@ -131,6 +147,29 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 
     /// Performs an operation on a client's SRV targets, producing a stream of
     /// results.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError, Execution}};
+    /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    /// # use std::convert::Infallible;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+    /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
+    /// let results_stream = client.execute(Execution::Serial, |address| async move {
+    ///     Ok::<_, Infallible>(address.to_string())
+    /// })
+    /// .await?;
+    /// // Do something with the stream, for example collect all results into a `Vec`:
+    /// use futures::stream::StreamExt;
+    /// let results: Vec<Result<_, _>> = results_stream.collect().await;
+    /// for result in results {
+    ///     assert!(result.is_ok());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn execute<'a, T, E: Error, Fut>(
         &'a self,
         execution_mode: Execution,
@@ -178,6 +217,31 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// Performs an operation on a client's SRV targets, producing the first
     /// successful result or the last error encountered if every execution of
     /// the operation was unsuccessful.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError, Execution}};
+    /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    /// # use std::convert::Infallible;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
+    ///
+    /// let res = client.execute_one(Execution::Serial, |address| async move {
+    ///     Ok::<_, Infallible>(address.to_string())
+    /// })
+    /// .await?;
+    /// assert!(res.is_ok());
+    ///
+    /// let res = client.execute_one(Execution::Concurrent, |address| async move {
+    ///     address.to_string().parse::<usize>()
+    /// })
+    /// .await?;
+    /// assert!(res.is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn execute_one<'a, T, E: Error, Fut>(
         &'a self,
         execution_mode: Execution,
@@ -229,6 +293,16 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     }
 
     /// Sets the policy of the client.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
+    /// # use srv_rs::client::{SrvClient, policy::Rfc2782};
+    /// # fn main() {
+    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
+    /// # }
+    /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {
             policy,
@@ -255,119 +329,4 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
             ..self
         }
     }
-}
-
-/// Performs an operation on a [`SrvClient`]'s SRV targets.
-///
-/// Operations must implement `FnMut(Uri) -> Result<T, E>`.
-///
-/// # Examples
-///
-/// ```
-/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
-/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-/// # use std::convert::Infallible;
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-///
-/// let res = srv_rs::execute!(client, |address: http::Uri| async move {
-///     Ok::<_, Infallible>(address.to_string())
-/// })
-/// .await?;
-/// assert!(res.is_ok());
-///
-/// let res = srv_rs::execute!(client, |address| async move {
-///     address.to_string().parse::<usize>()
-/// })
-/// .await?;
-/// assert!(res.is_err());
-/// # Ok(())
-/// # }
-/// ```
-///
-/// ## SRV Target Selection Policies
-///
-/// SRV target selection order is determined by a [`SrvClient`]'s [`Policy`],
-/// and can be set on client construction:
-///
-/// ```
-/// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
-/// # use srv_rs::client::{SrvClient, policy::Rfc2782};
-/// # fn main() {
-/// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
-/// # }
-/// ```
-///
-/// ## Execution Modes
-///
-/// By default, the operation will be executed on SRV targets *serially* (i.e.
-/// one after another). To execute the operations *concurrently*, an [`Execution`]
-/// can be specified as the second argument:
-///
-/// ```
-/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
-/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-/// # use std::convert::Infallible;
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-/// use srv_rs::client::Execution;
-/// let res = srv_rs::execute!(client, Execution::Concurrent, |address| async move {
-///     Ok::<_, Infallible>(address.to_string())
-/// })
-/// .await?;
-/// assert!(res.is_ok());
-/// # Ok(())
-/// # }
-/// ```
-///
-/// **Note:** *concurrent* does not imply *parallel*--no tasks are spawned in
-/// the concurrent execution mode.
-///
-/// ## Streaming Results
-///
-/// By default, `execute` will return the first sucessful result produced by
-/// the operation or the last unsuccessful one if there were no successes.
-/// To get a [`Stream`] of results, the `=> stream` syntax can be used:
-///
-/// ```
-/// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError}};
-/// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-/// # use std::convert::Infallible;
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), SrvError<LibResolvError>> {
-/// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-/// let results_stream = srv_rs::execute!(client => stream, |address| async move {
-///     Ok::<_, Infallible>(address.to_string())
-/// })
-/// .await?;
-/// // Do something with the stream, for example collect all results into a `Vec`:
-/// use futures::stream::StreamExt;
-/// let results: Vec<Result<_, _>> = results_stream.collect().await;
-/// for result in results {
-///     assert!(result.is_ok());
-/// }
-/// # Ok(())
-/// # }
-/// ```
-///
-/// [`Execution`]: client/enum.Execution.html
-/// [`SrvClient`]: client/struct.SrvClient.html
-/// [`Policy`]: client/policy/trait.Policy.html
-/// [`Stream`]: ../futures_core/stream/trait.Stream.html
-#[macro_export]
-macro_rules! execute {
-    ($client:expr, $f:expr) => {
-        $crate::execute!($client, Default::default(), $f)
-    };
-    ($client:expr, $mode:expr, $f:expr) => {
-        $client.execute_one($mode, $f)
-    };
-    ($client:expr => stream, $f:expr) => {
-        $client.execute(Default::default(), $f)
-    };
-    ($client:expr => stream, $mode:expr, $f:expr) => {
-        $client.execute($mode, $f)
-    };
 }

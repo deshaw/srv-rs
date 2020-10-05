@@ -31,9 +31,9 @@ It presents this service in the following interface:
 ```
 # #[tokio::main]
 # async fn main() {
-use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
+use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-srv_rs::execute!(client, |address: http::Uri| async move {
+client.execute_one(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
     hyper::Client::new().get(address).await
