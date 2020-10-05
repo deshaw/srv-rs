@@ -51,7 +51,7 @@ first `Ok` or last `Err` it obtains.
 
 # Alternative Resolvers and Target Selection Policies
 
-By default, `srv-rs` makes use of `libresolv` for SRV lookup and uses a
+`srv-rs` provides a `libresolv`-based resolver for SRV lookup and by default uses a
 target selection policy that maintains affinity for the last target it has used
 successfully. Both of these behaviors can be changed by implementing the
 [`SrvResolver`] and [`Policy`] traits, respectively.

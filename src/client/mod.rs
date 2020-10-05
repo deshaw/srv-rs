@@ -34,13 +34,30 @@ pub enum SrvError<Lookup: Debug> {
 
 /// Client for intelligently performing operations on a service located by SRV records.
 ///
+/// # Usage
+///
+/// After being created by [`new`] or [`new_with_resolver`], operations can be
+/// performed on the service pointed to by a `SrvClient` with the [`execute`]
+/// and [`execute_one`] methods.
+///
+/// ## DNS Resolvers
+///
+/// The resolver used to lookup SRV records is determined by a client's
+/// [`SrvResolver`], and can be set with [`resolver`].
+///
 /// ## SRV Target Selection Policies
 ///
 /// SRV target selection order is determined by a client's [`Policy`],
-/// and can be set with [`SrvClient::policy`].
+/// and can be set with [`policy`].
 ///
+/// [`new`]: struct.SrvClient.html#method.new
+/// [`new_with_resolver`]: struct.SrvClient.html#method.new_with_resolver
+/// [`execute`]: struct.SrvClient.html#method.execute
+/// [`execute_one`]: struct.SrvClient.html#method.execute_one
+/// [`SrvResolver`]: ../resolver/trait.SrvResolver.html
+/// [`resolver`]: struct.SrvClient.html#method.resolver
 /// [`Policy`]: policy/trait.Policy.html
-/// [`SrvClient::policy`]: struct.SrvClient.html#method.policy
+/// [`policy`]: struct.SrvClient.html#method.policy
 #[derive(Debug)]
 pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
     srv: String,
