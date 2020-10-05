@@ -2,7 +2,7 @@ use crate::client::{Cache, SrvClient, SrvError, SrvRecord, SrvResolver};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use http::Uri;
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 /// Policy for [`SrvClient`] to use when selecting SRV targets to recommend.
 ///
@@ -178,30 +178,6 @@ impl Policy for Rfc2782 {
 
     fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri {
         &item.uri
-    }
-}
-
-/// Iterator over `Uri`s with order determined by the algorithm in RFC 2782.
-/// See [`Rfc2782`].
-///
-/// [`Rfc2782`]: struct.Rfc2782.html
-pub struct Rfc2782UriIter<'a, Uris, Order> {
-    lifetime: PhantomData<&'a ()>,
-    uris: Uris,
-    order: Order,
-}
-
-impl<'a, Uris, Order> Iterator for Rfc2782UriIter<'a, Uris, Order>
-where
-    Uris: AsRef<[ParsedRecord]>,
-    Order: Iterator<Item = usize>,
-{
-    type Item = &'a Uri;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let idx = self.order.next()?;
-        let uri = self.uris.as_ref().get(idx).map(|parsed| &parsed.uri);
-        unsafe { std::mem::transmute(uri) }
     }
 }
 
