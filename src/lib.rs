@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 /*!
 Rust client for communicating with services located by DNS SRV records.
