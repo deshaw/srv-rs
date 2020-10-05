@@ -5,14 +5,11 @@ use arc_swap::ArcSwap;
 use futures_util::{
     pin_mut,
     stream::{self, Stream, StreamExt},
-    task::{Context, Poll},
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use pin_project::pin_project;
 use std::{
-    error::Error, fmt::Debug, future::Future, iter::FromIterator, pin::Pin, sync::Arc,
-    time::Duration,
+    error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Duration,
 };
 
 mod cache;
@@ -138,7 +135,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         &'a self,
         execution_mode: ExecutionMode,
         func: impl FnMut(Uri) -> Fut + 'a,
-    ) -> Result<ExecuteResults<impl Stream<Item = Result<T, E>> + 'a>, SrvError<Resolver::Error>>
+    ) -> Result<impl Stream<Item = Result<T, E>> + 'a, SrvError<Resolver::Error>>
     where
         Fut: Future<Output = Result<T, E>> + 'a,
     {
@@ -175,7 +172,36 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
                 }
             }
         });
-        Ok(ExecuteResults(results))
+        Ok(results)
+    }
+
+    /// Performs an operation on a client's SRV targets, producing the first
+    /// successful result or the last error encountered if every execution of
+    /// the operation was unsuccessful.
+    pub async fn execute_one<'a, T, E: Error, Fut>(
+        &'a self,
+        execution_mode: ExecutionMode,
+        func: impl FnMut(Uri) -> Fut + 'a,
+    ) -> Result<Result<T, E>, SrvError<Resolver::Error>>
+    where
+        Fut: Future<Output = Result<T, E>> + 'a,
+    {
+        let results = self.execute(execution_mode, func).await?;
+        pin_mut!(results);
+
+        let mut last_error = None;
+        while let Some(result) = results.next().await {
+            match result {
+                Ok(res) => return Ok(Ok(res)),
+                Err(err) => last_error = Some(err),
+            }
+        }
+
+        if let Some(err) = last_error {
+            Ok(Err(err))
+        } else {
+            Err(NoSRVTargets.into())
+        }
     }
 
     fn parse_record(&self, record: &Resolver::Record) -> Result<Uri, http::Error> {
@@ -227,48 +253,6 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         Self {
             path_prefix: path_prefix.to_string(),
             ..self
-        }
-    }
-}
-
-/// Stream of results.
-#[pin_project]
-pub struct ExecuteResults<S>(#[pin] S);
-
-impl<S: Stream> Stream for ExecuteResults<S> {
-    type Item = S::Item;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().0.poll_next(cx)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
-
-impl<S> ExecuteResults<S> {
-    /// Returns the first `Result::Ok` or the last `Result::Err` in a stream
-    /// of results, or `None` if there are no results at all.
-    pub async fn first_success<T, E>(self) -> Result<Result<T, E>, NoSRVTargets>
-    where
-        S: Stream<Item = Result<T, E>>,
-    {
-        let results = self;
-        pin_mut!(results);
-
-        let mut last_error = None;
-        while let Some(result) = results.next().await {
-            match result {
-                Ok(res) => return Ok(Ok(res)),
-                Err(err) => last_error = Some(err),
-            }
-        }
-
-        if let Some(err) = last_error {
-            Ok(Err(err))
-        } else {
-            Err(NoSRVTargets)
         }
     }
 }
@@ -378,12 +362,7 @@ macro_rules! execute {
         $crate::execute!($client, Default::default(), $f)
     };
     ($client:expr, $mode:expr, $f:expr) => {
-        async {
-            match $crate::execute!($client => stream, $mode, $f).await {
-                Ok(results) => results.first_success().await.map_err(Into::into),
-                Err(e) => Err(e),
-            }
-        }
+        $client.execute_one($mode, $f)
     };
     ($client:expr => stream, $f:expr) => {
         $client.execute(Default::default(), $f)
