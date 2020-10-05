@@ -3,11 +3,13 @@
 use crate::{record::SrvRecord, resolver::SrvResolver};
 use arc_swap::ArcSwap;
 use futures_util::{
+    pin_mut,
     stream::{self, Stream, StreamExt},
     task::{Context, Poll},
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
+use pin_project::pin_project;
 use std::{
     error::Error, fmt::Debug, future::Future, iter::FromIterator, pin::Pin, sync::Arc,
     time::Duration,
@@ -230,15 +232,14 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 }
 
 /// Stream of results.
-pub struct ExecuteResults<S>(S);
+#[pin_project]
+pub struct ExecuteResults<S>(#[pin] S);
 
 impl<S: Stream> Stream for ExecuteResults<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // This is okay because the inner stream is pinned when `self` is.
-        let stream = unsafe { self.map_unchecked_mut(|s| &mut s.0) };
-        stream.poll_next(cx)
+        self.project().0.poll_next(cx)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -254,7 +255,7 @@ impl<S> ExecuteResults<S> {
         S: Stream<Item = Result<T, E>>,
     {
         let results = self;
-        pin_utils::pin_mut!(results);
+        pin_mut!(results);
 
         let mut last_error = None;
         while let Some(result) = results.next().await {
