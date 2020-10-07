@@ -13,13 +13,13 @@ For instance, a DNS server might respond with the following SRV records for
 `_http._tcp.example.com`:
 
 ```
-_http._tcp.example.com. 60 IN SRV 1 100 8000 test.example.com.
-_http._tcp.example.com. 60 IN SRV 2 50  8001 test.example.com.
-_http._tcp.example.com. 60 IN SRV 2 50  8002 test.example.com.
+_http._tcp.example.com. 60 IN SRV 1 100 443 test1.example.com.
+_http._tcp.example.com. 60 IN SRV 2 50  443 test2.example.com.
+_http._tcp.example.com. 60 IN SRV 2 50  443 test3.example.com.
 ```
 
 A client wanting to communicate with this example service would first try to
-communicate with `test.example.com:8000` (the record with the lowest
+communicate with `test1.example.com:443` (the record with the lowest
 priority), then with the other two (in a random order, since they are of the
 same priority) should the first be unavailable.
 
