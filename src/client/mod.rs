@@ -154,8 +154,13 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         }
     }
 
-    /// Performs an operation on a client's SRV targets, producing a stream of
-    /// results.
+    /// Performs an operation on all of a client's SRV targets, producing a
+    /// stream of results (one for each target). If the serial execution mode is
+    /// specified, the operation will be performed on each target in the order
+    /// determined by the current [`Policy`], and the results will be returned
+    /// in the same order. If the concurrent execution mode is specified, the
+    /// operation will be performed on all targets concurrently, and results
+    /// will be returned in the order they become available.
     ///
     /// # Examples
     ///
@@ -179,6 +184,8 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// [`Policy`]: policy/trait.Policy.html
     pub async fn execute<'a, T, E: Error, Fut>(
         &'a self,
         execution_mode: Execution,
