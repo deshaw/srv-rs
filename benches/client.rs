@@ -25,33 +25,31 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group(format!("execute ({}, first succeeds)", SRV_DESCRIPTION));
     group.bench_function("Policy::Affinity", |b| {
-        b.iter(|| runtime.block_on(client.execute_one(Execution::Serial, |_| async { succeed() })))
+        b.iter(|| runtime.block_on(client.execute(Execution::Serial, |_| async { succeed() })))
     });
     group.bench_function("Policy::Rfc2782", |b| {
         b.iter(|| {
-            runtime.block_on(rfc2782_client.execute_one(Execution::Serial, |_| async { succeed() }))
+            runtime.block_on(rfc2782_client.execute(Execution::Serial, |_| async { succeed() }))
         })
     });
     drop(group);
 
     let mut group = c.benchmark_group(format!("execute ({}, all fail)", SRV_DESCRIPTION));
     group.bench_function("Policy::Affinity", |b| {
-        b.iter(|| runtime.block_on(client.execute_one(Execution::Serial, |_| async { fail() })))
+        b.iter(|| runtime.block_on(client.execute(Execution::Serial, |_| async { fail() })))
     });
     group.bench_function("Policy::Rfc2782", |b| {
-        b.iter(|| {
-            runtime.block_on(rfc2782_client.execute_one(Execution::Serial, |_| async { fail() }))
-        })
+        b.iter(|| runtime.block_on(rfc2782_client.execute(Execution::Serial, |_| async { fail() })))
     });
     drop(group);
 
     let mut group = c.benchmark_group(format!("execute ({}, half fail)", SRV_DESCRIPTION));
     group.bench_function("Policy::Affinity", |b| {
-        b.iter(|| runtime.block_on(client.execute_one(Execution::Serial, |_| async { random() })))
+        b.iter(|| runtime.block_on(client.execute(Execution::Serial, |_| async { random() })))
     });
     group.bench_function("Policy::Rfc2782", |b| {
         b.iter(|| {
-            runtime.block_on(rfc2782_client.execute_one(Execution::Serial, |_| async { random() }))
+            runtime.block_on(rfc2782_client.execute(Execution::Serial, |_| async { random() }))
         })
     });
 }

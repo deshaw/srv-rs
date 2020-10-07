@@ -30,7 +30,7 @@ It presents this service in the following interface:
 ```rust
 use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-client.execute_one(Execution::Serial, |address: http::Uri| async move {
+client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
     hyper::Client::new().get(address).await
@@ -40,7 +40,7 @@ client.execute_one(Execution::Serial, |address: http::Uri| async move {
 
 [`SrvClient::new`] creates a client (that should be reused to take advantage of
 caching) for communicating with the service located by `_http._tcp.example.com`.
-[`SrvClient::execute_one`] takes in a future-producing closure (emulating async
+[`SrvClient::execute`] takes in a future-producing closure (emulating async
 closures, which are currently unstable) and executes the closure on a series of
 targets parsed from the discovered SRV records, stopping and returning the
 first `Ok` or last `Err` it obtains.
@@ -53,7 +53,7 @@ successfully. Both of these behaviors can be changed by implementing the
 [`SrvResolver`] and [`Policy`] traits, respectively.
 
 [`SrvClient::new`]: client/struct.SrvClient.html#method.new
-[`SrvClient::execute_one`]: client/struct.SrvClient.html#method.execute_one
+[`SrvClient::execute`]: client/struct.SrvClient.html#method.execute
 [`SrvResolver`]: resolver/trait.SrvResolver.html
 [`Policy`]: client/policy/trait.Policy.html
 

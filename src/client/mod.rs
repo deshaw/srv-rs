@@ -38,7 +38,7 @@ pub enum SrvError<Lookup: Debug> {
 ///
 /// After being created by [`new`] or [`new_with_resolver`], operations can be
 /// performed on the service pointed to by a `SrvClient` with the [`execute`]
-/// and [`execute_one`] methods.
+/// and [`execute_stream`] methods.
 ///
 /// ## DNS Resolvers
 ///
@@ -53,7 +53,7 @@ pub enum SrvError<Lookup: Debug> {
 /// [`new`]: struct.SrvClient.html#method.new
 /// [`new_with_resolver`]: struct.SrvClient.html#method.new_with_resolver
 /// [`execute`]: struct.SrvClient.html#method.execute
-/// [`execute_one`]: struct.SrvClient.html#method.execute_one
+/// [`execute_stream`]: struct.SrvClient.html#method.execute_stream
 /// [`SrvResolver`]: ../resolver/trait.SrvResolver.html
 /// [`resolver`]: struct.SrvClient.html#method.resolver
 /// [`Policy`]: policy/trait.Policy.html
@@ -171,7 +171,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
     /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
-    /// let results_stream = client.execute(Execution::Serial, |address| async move {
+    /// let results_stream = client.execute_stream(Execution::Serial, |address| async move {
     ///     Ok::<_, Infallible>(address.to_string())
     /// })
     /// .await?;
@@ -186,7 +186,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// ```
     ///
     /// [`Policy`]: policy/trait.Policy.html
-    pub async fn execute<'a, T, E: Error, Fut>(
+    pub async fn execute_stream<'a, T, E: Error, Fut>(
         &'a self,
         execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut + 'a,
@@ -244,13 +244,13 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     ///
-    /// let res = client.execute_one(Execution::Serial, |address| async move {
+    /// let res = client.execute(Execution::Serial, |address| async move {
     ///     Ok::<_, Infallible>(address.to_string())
     /// })
     /// .await?;
     /// assert!(res.is_ok());
     ///
-    /// let res = client.execute_one(Execution::Concurrent, |address| async move {
+    /// let res = client.execute(Execution::Concurrent, |address| async move {
     ///     address.to_string().parse::<usize>()
     /// })
     /// .await?;
@@ -258,7 +258,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn execute_one<T, E: Error, Fut>(
+    pub async fn execute<T, E: Error, Fut>(
         &self,
         execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut,
@@ -266,7 +266,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     where
         Fut: Future<Output = Result<T, E>>,
     {
-        let results = self.execute(execution_mode, func).await?;
+        let results = self.execute_stream(execution_mode, func).await?;
         pin_mut!(results);
 
         let mut last_error = None;
