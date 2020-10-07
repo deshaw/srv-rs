@@ -21,11 +21,11 @@ pub mod policy;
 /// Errors encountered during SRV record resolution
 #[derive(Debug, thiserror::Error)]
 pub enum SrvError<Lookup: Debug> {
-    /// Srv lookup errors
-    #[error("srv lookup error")]
+    /// SRV lookup errors
+    #[error("SRV lookup error")]
     Lookup(Lookup),
-    /// Srv record parsing errors
-    #[error("building uri from srv record: {0}")]
+    /// SRV record parsing errors
+    #[error("building uri from SRV record: {0}")]
     RecordParsing(#[from] http::Error),
     /// Produced when there are no SRV targets for a client to use
     #[error("no SRV targets to use")]
