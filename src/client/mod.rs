@@ -12,7 +12,7 @@ use std::{
     error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Duration,
 };
 
-mod cache;
+pub mod cache;
 use cache::Cache;
 
 /// SRV target selection policies.
