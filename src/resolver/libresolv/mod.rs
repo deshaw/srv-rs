@@ -190,7 +190,7 @@ mod tests {
     #[tokio::test]
     async fn test_srv_lookup() -> Result<(), LibResolvError> {
         let records = LibResolv::default()
-            .get_srv_records_unordered("_http._tcp.srv-client-rust.deshaw.org")
+            .get_srv_records_unordered(crate::EXAMPLE_SRV)
             .await?;
         assert_ne!(records.len(), 0);
         Ok(())
@@ -199,7 +199,7 @@ mod tests {
     #[tokio::test]
     async fn test_srv_lookup_ordered() -> Result<(), LibResolvError> {
         let records = LibResolv::default()
-            .get_srv_records("_http._tcp.srv-client-rust.deshaw.org")
+            .get_srv_records(crate::EXAMPLE_SRV)
             .await?;
         assert_ne!(records.len(), 0);
         assert!((0..records.len() - 1).all(|i| records[i].priority() <= records[i + 1].priority()));

@@ -5,14 +5,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
     c.bench_function(
-        "resolve _http._tcp.srv-client-rust.deshaw.org (libresolv)",
+        &format!("resolve {} (libresolv)", srv_rs::EXAMPLE_SRV),
         |b| {
             b.iter(|| {
                 runtime
-                    .block_on(
-                        LibResolv::default()
-                            .get_srv_records_unordered("_http._tcp.srv-client-rust.deshaw.org"),
-                    )
+                    .block_on(LibResolv::default().get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
                     .unwrap()
             })
         },
@@ -27,12 +24,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 
     let records = runtime
-        .block_on(
-            LibResolv::default().get_srv_records_unordered("_http._tcp.srv-client-rust.deshaw.org"),
-        )
+        .block_on(LibResolv::default().get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
         .unwrap();
     let mut rng = rand::thread_rng();
-    c.bench_function("order _http._tcp.srv-client-rust.deshaw.org records", |b| {
+    c.bench_function(&format!("order {} records", srv_rs::EXAMPLE_SRV), |b| {
         b.iter(|| LibResolv::order_srv_records(&mut records.clone(), &mut rng))
     });
 }

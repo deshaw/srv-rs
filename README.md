@@ -13,13 +13,13 @@ For instance, a DNS server might respond with the following SRV records for
 `_http._tcp.example.com`:
 
 ```
-_http._tcp.example.com. 60 IN SRV 1 100 8000 test.example.com.
-_http._tcp.example.com. 60 IN SRV 2 50  8001 test.example.com.
-_http._tcp.example.com. 60 IN SRV 2 50  8002 test.example.com.
+_http._tcp.example.com. 60 IN SRV 1 100 443 test1.example.com.
+_http._tcp.example.com. 60 IN SRV 2 50  443 test2.example.com.
+_http._tcp.example.com. 60 IN SRV 2 50  443 test3.example.com.
 ```
 
 A client wanting to communicate with this example service would first try to
-communicate with `test.example.com:8000` (the record with the lowest
+communicate with `test1.example.com:443` (the record with the lowest
 priority), then with the other two (in a random order, since they are of the
 same priority) should the first be unavailable.
 
@@ -28,31 +28,32 @@ selection of targets to use for communication with SRV-located services.
 It presents this service in the following interface:
 
 ```rust
-use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
+use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-srv_rs::execute!(client, |address: &http::Uri| async move {
+client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
-    hyper::Client::new().get(address.to_owned()).await
-}).await;
+    hyper::Client::new().get(address).await
+})
+.await;
 ```
 
 [`SrvClient::new`] creates a client (that should be reused to take advantage of
 caching) for communicating with the service located by `_http._tcp.example.com`.
-The [`execute`] macro takes in a future-producing closure (emulating async
+[`SrvClient::execute`] takes in a future-producing closure (emulating async
 closures, which are currently unstable) and executes the closure on a series of
 targets parsed from the discovered SRV records, stopping and returning the
 first `Ok` or last `Err` it obtains.
 
 ## Alternative Resolvers and Target Selection Policies
 
-By default, `srv-rs` makes use of `libresolv` for SRV lookup and uses a
+`srv-rs` provides a `libresolv`-based resolver for SRV lookup and by default uses a
 target selection policy that maintains affinity for the last target it has used
 successfully. Both of these behaviors can be changed by implementing the
 [`SrvResolver`] and [`Policy`] traits, respectively.
 
 [`SrvClient::new`]: client/struct.SrvClient.html#method.new
-[`execute`]: macro.execute.html
+[`SrvClient::execute`]: client/struct.SrvClient.html#method.execute
 [`SrvResolver`]: resolver/trait.SrvResolver.html
 [`Policy`]: client/policy/trait.Policy.html
 

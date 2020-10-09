@@ -28,8 +28,8 @@ impl<T> Cache<T> {
         !self.items.is_empty() && self.created.elapsed() <= self.max_age
     }
 
-    pub fn items<'a>(guard: Guard<'a, Arc<Self>>) -> CacheItemsHandle<T> {
-        CacheItemsHandle(guard)
+    pub fn items(&self) -> &[T] {
+        &self.items
     }
 }
 
