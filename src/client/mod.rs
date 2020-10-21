@@ -113,14 +113,21 @@ impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
 }
 
 impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
-    async fn get_srv_records(&self) -> Result<Vec<Resolver::Record>, SrvError<Resolver::Error>> {
+    /// Gets a fresh set of SRV records from a client's DNS resolver.
+    pub async fn get_srv_records(
+        &self,
+    ) -> Result<Vec<Resolver::Record>, SrvError<Resolver::Error>> {
         self.resolver
             .get_srv_records(&self.srv)
             .await
             .map_err(SrvError::Lookup)
     }
 
-    async fn get_fresh_uri_candidates(
+    /// Gets a fresh set of SRV records from a client's DNS resolver and parses
+    /// their target/port pairs into URIs, which are returned alongside a
+    /// `Duration` equal to the minimum TTL of the records--i.e., the maximum
+    /// time a cache containing these URIs should be valid.
+    pub async fn get_fresh_uri_candidates(
         &self,
     ) -> Result<(Vec<Uri>, Duration), SrvError<Resolver::Error>> {
         // Query DNS for the SRV record
