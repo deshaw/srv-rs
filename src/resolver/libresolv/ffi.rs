@@ -18,14 +18,18 @@ pub enum ResolverError {
     Unexpected(std::os::raw::c_int),
 }
 
-pub struct ResolverState(res_state);
+/// `libresolv` resolver state. The contained state __must not be moved__ since
+/// it contains self-referential pointers in `res_state.dnsrch`. If we didn't
+/// have to pass raw pointers around in FFI, the state would be `Pin`ned and
+/// `res_state` would be wrapped in a `!Unpin` struct.
+pub struct ResolverState(Box<res_state>);
 
 impl ResolverState {
     pub fn init() -> Result<Self, ResolverError> {
-        let mut state = res_state::default();
-        let ret = unsafe { res_ninit(&mut state) };
+        let mut state = Self(Box::new(res_state::default()));
+        let ret = unsafe { res_ninit(state.as_mut()) };
         if ret >= 0 {
-            Ok(Self(state))
+            Ok(state)
         } else {
             Err(ResolverError::Unexpected(ret))
         }
