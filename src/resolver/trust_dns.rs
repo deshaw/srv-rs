@@ -3,7 +3,7 @@
 use super::SrvResolver;
 use crate::record::SrvRecord;
 use async_trait::async_trait;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use trust_dns_resolver::{
     error::ResolveError,
     proto::{rr::rdata::SRV, DnsHandle},
@@ -16,39 +16,36 @@ where
     C: DnsHandle,
     P: ConnectionProvider<Conn = C>,
 {
-    type Record = (SRV, Duration);
+    type Record = SRV;
     type Error = ResolveError;
 
-    async fn get_srv_records_unordered(&self, srv: &str) -> Result<Vec<Self::Record>, Self::Error> {
+    async fn get_srv_records_unordered(
+        &self,
+        srv: &str,
+    ) -> Result<(Vec<Self::Record>, Instant), Self::Error> {
         let lookup = self.srv_lookup(srv).await?;
-        // TODO: it'd be cleaner not to duplicate this duration--maybe we should
-        // have the method return (Vec<Self::Record>, Duration).
-        let ttl = lookup.as_lookup().valid_until() - Instant::now();
-        Ok(lookup.into_iter().zip(std::iter::repeat(ttl)).collect())
+        let valid_until = lookup.as_lookup().valid_until();
+        Ok((lookup.into_iter().collect(), valid_until))
     }
 }
 
-impl SrvRecord for (SRV, Duration) {
+impl SrvRecord for SRV {
     type Target = Name;
 
-    fn ttl(&self) -> Duration {
-        self.1
-    }
-
     fn target(&self) -> &Self::Target {
-        self.0.target()
+        self.target()
     }
 
     fn port(&self) -> u16 {
-        self.0.port()
+        self.port()
     }
 
     fn priority(&self) -> u16 {
-        self.0.priority()
+        self.priority()
     }
 
     fn weight(&self) -> u16 {
-        self.0.weight()
+        self.weight()
     }
 }
 
@@ -58,7 +55,7 @@ mod tests {
 
     #[tokio::test]
     async fn srv_lookup() -> Result<(), ResolveError> {
-        let records = AsyncResolver::tokio_from_system_conf()
+        let (records, _) = AsyncResolver::tokio_from_system_conf()
             .await?
             .get_srv_records_unordered(crate::EXAMPLE_SRV)
             .await?;
@@ -68,7 +65,7 @@ mod tests {
 
     #[tokio::test]
     async fn srv_lookup_ordered() -> Result<(), ResolveError> {
-        let records = AsyncResolver::tokio_from_system_conf()
+        let (records, _) = AsyncResolver::tokio_from_system_conf()
             .await?
             .get_srv_records(crate::EXAMPLE_SRV)
             .await?;
@@ -82,10 +79,8 @@ mod tests {
         use crate::client::{policy::Affinity, SrvClient};
         let resolver = AsyncResolver::tokio_from_system_conf().await?;
         let client = SrvClient::<_, Affinity>::new_with_resolver(crate::EXAMPLE_SRV, resolver);
-        assert_ne!(
-            client.get_fresh_uri_candidates().await.unwrap().0,
-            Vec::<http::Uri>::new()
-        );
+        let (uris, _) = client.get_fresh_uri_candidates().await.unwrap();
+        assert_ne!(uris, Vec::<http::Uri>::new());
         Ok(())
     }
 

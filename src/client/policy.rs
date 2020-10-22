@@ -55,8 +55,8 @@ impl Policy for Affinity {
         &self,
         client: &SrvClient<Resolver, Self>,
     ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>> {
-        let (uris, min_ttl) = client.get_fresh_uri_candidates().await?;
-        Ok(Cache::new(uris, min_ttl))
+        let (uris, valid_until) = client.get_fresh_uri_candidates().await?;
+        Ok(Cache::new(uris, valid_until))
     }
 
     fn order(&self, uris: &[Uri]) -> Self::Ordering {
@@ -153,7 +153,7 @@ impl Policy for Rfc2782 {
         &self,
         client: &SrvClient<Resolver, Self>,
     ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>> {
-        let records = client.get_srv_records().await?;
+        let (records, valid_until) = client.get_srv_records().await?;
         let parsed = records
             .iter()
             .map(|record| {
@@ -162,8 +162,7 @@ impl Policy for Rfc2782 {
                     .map(|uri| ParsedRecord::new(record, uri))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let min_ttl = records.iter().map(|record| record.ttl()).min();
-        Ok(Cache::new(parsed, min_ttl.unwrap_or_default()))
+        Ok(Cache::new(parsed, valid_until))
     }
 
     fn order(&self, records: &[ParsedRecord]) -> Self::Ordering {

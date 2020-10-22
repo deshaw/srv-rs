@@ -23,7 +23,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    let records = runtime
+    let (records, _) = runtime
         .block_on(LibResolv::default().get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
         .unwrap();
     let mut rng = rand::thread_rng();

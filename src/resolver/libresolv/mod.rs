@@ -2,7 +2,12 @@
 
 use super::{SrvRecord, SrvResolver};
 use async_trait::async_trait;
-use std::{convert::TryInto, ffi::CString, time::Duration};
+use std::{
+    cmp,
+    convert::TryInto,
+    ffi::CString,
+    time::{Duration, Instant},
+};
 
 mod ffi;
 
@@ -49,7 +54,10 @@ impl SrvResolver for LibResolv {
     type Record = LibResolvSrvRecord;
     type Error = LibResolvError;
 
-    async fn get_srv_records_unordered(&self, srv: &str) -> Result<Vec<Self::Record>, Self::Error> {
+    async fn get_srv_records_unordered(
+        &self,
+        srv: &str,
+    ) -> Result<(Vec<Self::Record>, Instant), Self::Error> {
         let srv = CString::new(srv)?;
         let mut buf = vec![0u8; self.initial_buf_size];
         ffi::RESOLV_STATE.with(|state| {
@@ -86,16 +94,20 @@ impl SrvResolver for LibResolv {
             state.check(ret)?;
 
             let mut rr = unsafe { std::mem::zeroed() };
-            let records = (0..ffi::ns_msg_count(msg, ffi::ns_s_an))
-                .map(|idx| {
-                    let ret =
-                        unsafe { ffi::ns_parserr(&mut msg, ffi::ns_s_an, idx as i32, &mut rr) };
-                    state.check(ret)?;
-                    LibResolvSrvRecord::try_parse(&state, msg, rr)
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+            let num_records = ffi::ns_msg_count(msg, ffi::ns_s_an);
+            let mut records = Vec::with_capacity(num_records as usize);
+            let mut min_valid_until = None;
+            for idx in 0..num_records {
+                let ret = unsafe { ffi::ns_parserr(&mut msg, ffi::ns_s_an, idx as i32, &mut rr) };
+                state.check(ret)?;
+                let (record, valid_until) = LibResolvSrvRecord::try_parse(&state, msg, rr)?;
+                records.push(record);
+                min_valid_until = min_valid_until
+                    .map(|min_valid_until| cmp::min(min_valid_until, valid_until))
+                    .or(Some(valid_until));
+            }
 
-            Ok(records)
+            Ok((records, min_valid_until.unwrap_or_else(Instant::now)))
         })
     }
 }
@@ -105,8 +117,6 @@ impl SrvResolver for LibResolv {
 /// [`LibResolv`]: struct.LibResolv.html
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LibResolvSrvRecord {
-    /// Record's time-to-live.
-    pub ttl: Duration,
     /// Records's target.
     pub target: String,
     /// Record's port.
@@ -119,10 +129,6 @@ pub struct LibResolvSrvRecord {
 
 impl SrvRecord for LibResolvSrvRecord {
     type Target = str;
-
-    fn ttl(&self) -> Duration {
-        self.ttl
-    }
 
     fn target(&self) -> &Self::Target {
         &self.target
@@ -146,7 +152,7 @@ impl LibResolvSrvRecord {
         state: &ffi::ResolverState,
         msg: ffi::ns_msg,
         rr: ffi::ns_rr,
-    ) -> Result<Self, LibResolvError> {
+    ) -> Result<(Self, Instant), LibResolvError> {
         if rr.type_ as u32 != ffi::ns_t_srv {
             return Err(LibResolvError::NotSrv);
         }
@@ -175,13 +181,14 @@ impl LibResolvSrvRecord {
         state.check(ret)?;
 
         let target = unsafe { std::ffi::CStr::from_ptr(name.as_ptr().cast()) };
-        Ok(Self {
-            ttl: Duration::from_secs(rr.ttl as u64),
+        let valid_until = Instant::now() + Duration::from_secs(rr.ttl as u64);
+        let record = Self {
             target: target.to_string_lossy().to_string(),
             port,
             priority,
             weight,
-        })
+        };
+        Ok((record, valid_until))
     }
 }
 
@@ -190,17 +197,18 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_srv_lookup() -> Result<(), LibResolvError> {
-        let records = LibResolv::default()
+    async fn srv_lookup() -> Result<(), LibResolvError> {
+        let (records, valid_until) = LibResolv::default()
             .get_srv_records_unordered(crate::EXAMPLE_SRV)
             .await?;
         assert_ne!(records.len(), 0);
+        assert!(valid_until > Instant::now());
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_srv_lookup_ordered() -> Result<(), LibResolvError> {
-        let records = LibResolv::default()
+    async fn srv_lookup_ordered() -> Result<(), LibResolvError> {
+        let (records, _) = LibResolv::default()
             .get_srv_records(crate::EXAMPLE_SRV)
             .await?;
         assert_ne!(records.len(), 0);
