@@ -6,11 +6,11 @@
 
 Add {{crate}} to your dependencies in `Cargo.toml`, enabling at least one of
 the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-resolvers-and-target-selection-policies)).
-`trust-dns` is enabled here as an example, but it is not required.
+`libresolv` is enabled here as an example, but it is not required.
 
 ```toml
 [dependencies]
-{{crate}} = { git = "https://github.com/deshaw/{{crate}}", features = ["trust-dns"] }
+{{crate}} = { git = "https://github.com/deshaw/{{crate}}", features = ["libresolv"] }
 ```
 
 ## Contributing

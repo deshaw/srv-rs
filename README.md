@@ -57,22 +57,22 @@ The provided resolver backends are enabled by the following features:
 - `libresolv` (via [`LibResolv`])
 - `trust-dns` (via [`trust-dns-resolver::AsyncResolver`])
 
-[`srvclient::new`]: client/struct.SrvClient.html#method.new
-[`srvclient::execute`]: client/struct.SrvClient.html#method.execute
-[`srvresolver`]: resolver/trait.SrvResolver.html
-[`policy`]: client/policy/trait.Policy.html
-[`libresolv`]: resolver/libresolv/struct.LibResolv.html
-[`trust-dns-resolver::asyncresolver`]: ../trust_dns_resolver/struct.AsyncResolver.html
+[`SrvClient::new`]: client/struct.SrvClient.html#method.new
+[`SrvClient::execute`]: client/struct.SrvClient.html#method.execute
+[`SrvResolver`]: resolver/trait.SrvResolver.html
+[`Policy`]: client/policy/trait.Policy.html
+[`LibResolv`]: resolver/libresolv/struct.LibResolv.html
+[`trust-dns-resolver::AsyncResolver`]: ../trust_dns_resolver/struct.AsyncResolver.html
 
 ## Usage
 
 Add srv-rs to your dependencies in `Cargo.toml`, enabling at least one of
 the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-resolvers-and-target-selection-policies)).
-`trust-dns` is enabled here as an example, but it is not required.
+`libresolv` is enabled here as an example, but it is not required.
 
 ```toml
 [dependencies]
-srv-rs = { git = "https://github.com/deshaw/srv-rs", features = ["trust-dns"] }
+srv-rs = { git = "https://github.com/deshaw/srv-rs", features = ["libresolv"] }
 ```
 
 ## Contributing
@@ -84,8 +84,8 @@ srv-rs = { git = "https://github.com/deshaw/srv-rs", features = ["trust-dns"] }
 5. Clippy: `cargo clippy`
 6. Bench: `cargo bench`
 7. If modifying crate-level docs (`src/lib.rs`) or `README.tpl`, update `README.md`:
-   1. `cargo install cargo-readme`
-   2. `cargo readme > README.md`
+    1. `cargo install cargo-readme`
+    2. `cargo readme > README.md`
 
 ## History
 
