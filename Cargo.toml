@@ -14,7 +14,7 @@ categories = ["network-programming"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["libresolv", "log"]
+default = ["log"]
 
 libresolv = ["libresolv-sys"]
 log = ["tracing"]

@@ -14,10 +14,12 @@ jobs:
         run: cargo build --verbose --no-default-features
       - name: Build (default features)
         run: cargo build --verbose
+      - name: Build (all features)
+        run: cargo build --verbose --all-features
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose --all-features
       - name: Compile benchmarks
-        run: cargo bench --no-run
+        run: cargo bench --no-run --all-features
 
   rustfmt:
     runs-on: ubuntu-16.04
