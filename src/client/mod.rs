@@ -86,10 +86,9 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
     ///
     /// # Examples
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, client::SrvClient, resolver::libresolv::LibResolv};
-    /// # fn main() {
+    /// # use srv_rs::EXAMPLE_SRV;
+    /// use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-    /// # }
     /// ```
     pub fn new(srv_name: impl ToString) -> Self {
         Self::new_with_resolver(srv_name, Resolver::default())
@@ -320,11 +319,9 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// # Examples
     ///
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
-    /// # use srv_rs::client::{SrvClient, policy::Rfc2782};
-    /// # fn main() {
+    /// # use srv_rs::{EXAMPLE_SRV, };
+    /// use srv_rs::{client::{SrvClient, policy::Rfc2782}, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
-    /// # }
     /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {
