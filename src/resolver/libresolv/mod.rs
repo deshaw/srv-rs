@@ -118,11 +118,13 @@ pub struct LibResolvSrvRecord {
 }
 
 impl SrvRecord for LibResolvSrvRecord {
+    type Target = str;
+
     fn ttl(&self) -> Duration {
         self.ttl
     }
 
-    fn target(&self) -> &str {
+    fn target(&self) -> &Self::Target {
         &self.target
     }
 
