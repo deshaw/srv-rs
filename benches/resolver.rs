@@ -5,9 +5,10 @@ use trust_dns_resolver::{AsyncResolver, TokioAsyncResolver};
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
     let libresolv = LibResolv::default();
-    let trust_dns = runtime
-        .block_on(AsyncResolver::tokio_from_system_conf())
-        .unwrap();
+    // Disable trust-dns caching so benches are fair
+    let (conf, mut opts) = trust_dns_resolver::system_conf::read_system_conf().unwrap();
+    opts.cache_size = 0;
+    let trust_dns = runtime.block_on(AsyncResolver::tokio(conf, opts)).unwrap();
 
     let mut group = c.benchmark_group(format!("resolve {}", srv_rs::EXAMPLE_SRV));
     group.bench_function("libresolv", |b| {
