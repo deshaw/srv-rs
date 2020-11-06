@@ -3,7 +3,6 @@
 use super::{SrvRecord, SrvResolver};
 use async_trait::async_trait;
 use std::{
-    cmp,
     convert::TryInto,
     ffi::CString,
     time::{Duration, Instant},
@@ -62,7 +61,7 @@ impl SrvResolver for LibResolv {
         let mut buf = vec![0u8; self.initial_buf_size];
         ffi::RESOLV_STATE.with(|state| {
             let mut state = state.borrow_mut();
-            let len = loop {
+            let (len, response_time) = loop {
                 let len = unsafe {
                     ffi::res_nsearch(
                         state.as_mut(),
@@ -78,7 +77,7 @@ impl SrvResolver for LibResolv {
                     Err(e) => return Err(e.into()),
                 };
                 if len <= buf.len() {
-                    break len;
+                    break (len, Instant::now());
                 } else if len <= ffi::NS_MAXMSG as usize {
                     // Retry with larger buffer
                     buf.resize(len, 0)
@@ -96,18 +95,16 @@ impl SrvResolver for LibResolv {
             let mut rr = unsafe { std::mem::zeroed() };
             let num_records = ffi::ns_msg_count(msg, ffi::ns_s_an);
             let mut records = Vec::with_capacity(num_records as usize);
-            let mut min_valid_until = None;
+            let mut min_ttl = None;
             for idx in 0..num_records {
                 let ret = unsafe { ffi::ns_parserr(&mut msg, ffi::ns_s_an, idx as i32, &mut rr) };
                 state.check(ret)?;
-                let (record, valid_until) = LibResolvSrvRecord::try_parse(&state, msg, rr)?;
+                let (record, ttl) = LibResolvSrvRecord::try_parse(&state, msg, rr)?;
                 records.push(record);
-                min_valid_until = min_valid_until
-                    .map(|min_valid_until| cmp::min(min_valid_until, valid_until))
-                    .or(Some(valid_until));
+                min_ttl = min_ttl.min(Some(ttl)).or(Some(ttl));
             }
 
-            Ok((records, min_valid_until.unwrap_or_else(Instant::now)))
+            Ok((records, response_time + min_ttl.unwrap_or_default()))
         })
     }
 }
@@ -152,7 +149,7 @@ impl LibResolvSrvRecord {
         state: &ffi::ResolverState,
         msg: ffi::ns_msg,
         rr: ffi::ns_rr,
-    ) -> Result<(Self, Instant), LibResolvError> {
+    ) -> Result<(Self, Duration), LibResolvError> {
         if rr.type_ as u32 != ffi::ns_t_srv {
             return Err(LibResolvError::NotSrv);
         }
@@ -181,14 +178,14 @@ impl LibResolvSrvRecord {
         state.check(ret)?;
 
         let target = unsafe { std::ffi::CStr::from_ptr(name.as_ptr().cast()) };
-        let valid_until = Instant::now() + Duration::from_secs(rr.ttl as u64);
+        let ttl = Duration::from_secs(rr.ttl as u64);
         let record = Self {
             target: target.to_string_lossy().to_string(),
             port,
             priority,
             weight,
         };
-        Ok((record, valid_until))
+        Ok((record, ttl))
     }
 }
 
