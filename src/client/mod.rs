@@ -210,6 +210,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         };
         let results = match execution_mode {
             Execution::Serial => stream::iter(order).then(func).left_stream(),
+            #[allow(clippy::from_iter_instead_of_collect)]
             Execution::Concurrent => {
                 stream::FuturesUnordered::from_iter(order.map(func)).right_stream()
             }
