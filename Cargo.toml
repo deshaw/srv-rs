@@ -21,21 +21,21 @@ log = ["tracing"]
 trust-dns = ["trust-dns-resolver"]
 
 [dependencies]
-arc-swap = "^0.4"
-async-trait = "^0.1"
-futures-util = "^0.3"
-http = "^0.2"
-libresolv-sys = { version = "^0.2", optional = true }
-rand = "^0.7"
-thiserror = "^1"
-tracing = { version = "^0.1", optional = true }
-trust-dns-resolver = { version = "^0.19", optional = true }
+arc-swap = "1.0"
+async-trait = "0.1"
+futures-util = "0.3"
+http = "0.2"
+libresolv-sys = { version = "0.2", optional = true }
+rand = "0.7"
+thiserror = "1.0"
+tracing = { version = "0.1", optional = true }
+trust-dns-resolver = { version = "0.19", optional = true }
 
 [dev-dependencies]
-criterion = "^0.3"
-futures = "^0.3"
-hyper = "^0.13"
-tokio = { version = "^0.2", features = ["rt-threaded", "macros"] }
+criterion = "0.3"
+futures = "0.3"
+hyper = "0.13"
+tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
 
 [[bench]]
 name = "client"
