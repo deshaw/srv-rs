@@ -2,15 +2,16 @@
 
 use http::uri::{PathAndQuery, Scheme, Uri};
 use rand::Rng;
-use std::{cmp::Reverse, convert::TryFrom, time::Duration};
+use std::{cmp::Reverse, convert::TryFrom, fmt::Display};
 
 /// Representation of types that contain the fields of a SRV record.
 pub trait SrvRecord {
-    /// Gets a SRV record's time-to-live.
-    fn ttl(&self) -> Duration;
+    /// Type representing the SRV record's target. Must implement `Display` so
+    /// it can be used to create a `Uri`.
+    type Target: Display + ?Sized;
 
     /// Gets a SRV record's target.
-    fn target(&self) -> &str;
+    fn target(&self) -> &Self::Target;
 
     /// Gets a SRV record's port.
     fn port(&self) -> u16;
@@ -33,7 +34,6 @@ pub trait SrvRecord {
     ///     weight: 100,
     ///     port: 8211,
     ///     target: String::from("srv-client-rust.deshaw.org"),
-    ///     ttl: Duration::from_secs(60),
     /// };
     /// assert_eq!(
     ///     &record.parse("https", "/")?.to_string(),

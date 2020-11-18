@@ -8,9 +8,7 @@ use futures_util::{
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{
-    error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Duration,
-};
+use std::{error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Instant};
 
 pub mod cache;
 use cache::Cache;
@@ -88,10 +86,9 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
     ///
     /// # Examples
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, client::SrvClient, resolver::libresolv::LibResolv};
-    /// # fn main() {
+    /// # use srv_rs::EXAMPLE_SRV;
+    /// use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
-    /// # }
     /// ```
     pub fn new(srv_name: impl ToString) -> Self {
         Self::new_with_resolver(srv_name, Resolver::default())
@@ -113,10 +110,11 @@ impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
 }
 
 impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
-    /// Gets a fresh set of SRV records from a client's DNS resolver.
+    /// Gets a fresh set of SRV records from a client's DNS resolver, returning
+    /// them along with the time they're valid until.
     pub async fn get_srv_records(
         &self,
-    ) -> Result<Vec<Resolver::Record>, SrvError<Resolver::Error>> {
+    ) -> Result<(Vec<Resolver::Record>, Instant), SrvError<Resolver::Error>> {
         self.resolver
             .get_srv_records(&self.srv)
             .await
@@ -124,23 +122,22 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     }
 
     /// Gets a fresh set of SRV records from a client's DNS resolver and parses
-    /// their target/port pairs into URIs, which are returned alongside a
-    /// `Duration` equal to the minimum TTL of the records--i.e., the maximum
-    /// time a cache containing these URIs should be valid.
+    /// their target/port pairs into URIs, which are returned along with the
+    /// time they're valid until--i.e., the time a cache containing these URIs
+    /// should expire.
     pub async fn get_fresh_uri_candidates(
         &self,
-    ) -> Result<(Vec<Uri>, Duration), SrvError<Resolver::Error>> {
+    ) -> Result<(Vec<Uri>, Instant), SrvError<Resolver::Error>> {
         // Query DNS for the SRV record
-        let records = self.get_srv_records().await?;
+        let (records, valid_until) = self.get_srv_records().await?;
 
         // Create URIs from SRV records
-        let min_ttl = records.iter().map(|r| r.ttl()).min().unwrap_or_default();
         let uris = records
             .iter()
             .map(|record| self.parse_record(record))
             .collect::<Result<Vec<Uri>, _>>()?;
 
-        Ok((uris, min_ttl))
+        Ok((uris, valid_until))
     }
 
     async fn refresh_cache(
@@ -213,6 +210,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         };
         let results = match execution_mode {
             Execution::Serial => stream::iter(order).then(func).left_stream(),
+            #[allow(clippy::from_iter_instead_of_collect)]
             Execution::Concurrent => {
                 stream::FuturesUnordered::from_iter(order.map(func)).right_stream()
             }
@@ -322,11 +320,9 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// # Examples
     ///
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, resolver::libresolv::LibResolv};
-    /// # use srv_rs::client::{SrvClient, policy::Rfc2782};
-    /// # fn main() {
+    /// # use srv_rs::{EXAMPLE_SRV, };
+    /// use srv_rs::{client::{SrvClient, policy::Rfc2782}, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
-    /// # }
     /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {

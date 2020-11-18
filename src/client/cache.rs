@@ -1,28 +1,23 @@
 //! Caches for SRV record targets.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 #[derive(Debug)]
 /// A cache of items valid for a limited period of time.
 pub struct Cache<T> {
-    created: Instant,
-    max_age: Duration,
+    valid_until: Instant,
     items: Vec<T>,
 }
 
 impl<T> Cache<T> {
-    /// Creates a new cache of items valid for `max_age`.
-    pub fn new(items: Vec<T>, max_age: Duration) -> Self {
-        Self {
-            created: Instant::now(),
-            max_age,
-            items,
-        }
+    /// Creates a new cache of items valid until some time.
+    pub fn new(items: Vec<T>, valid_until: Instant) -> Self {
+        Self { valid_until, items }
     }
 
     /// Determines if a cache is valid.
     pub fn valid(&self) -> bool {
-        !self.items.is_empty() && self.created.elapsed() <= self.max_age
+        !self.items.is_empty() && Instant::now() <= self.valid_until
     }
 
     /// Gets the items stored in a cache.
@@ -33,6 +28,35 @@ impl<T> Cache<T> {
 
 impl<T> Default for Cache<T> {
     fn default() -> Self {
-        Self::new(Vec::new(), Duration::new(0, 0))
+        Self::new(Vec::new(), Instant::now())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn default_is_invalid() {
+        assert!(!Cache::<()>::default().valid());
+    }
+
+    #[test]
+    fn empty_is_invalid() {
+        let cache = Cache::<()>::new(vec![], Instant::now() + Duration::from_secs(1));
+        assert!(!cache.valid());
+    }
+
+    #[test]
+    fn expired_is_invalid() {
+        let cache = Cache::new(vec![()], Instant::now() - Duration::from_secs(1));
+        assert!(!cache.valid());
+    }
+
+    #[test]
+    fn nonempty_and_fresh_is_valid() {
+        let cache = Cache::new(vec![()], Instant::now() + Duration::from_secs(1));
+        assert!(cache.valid());
     }
 }
