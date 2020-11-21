@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![warn(broken_intra_doc_links)]
 
 /*!
 Rust client for communicating with services located by DNS SRV records.
@@ -59,14 +60,13 @@ used successfully. Both of these behaviors can be changed by implementing the
 The provided resolver backends are enabled by the following features:
 
 - `libresolv` (via [`LibResolv`])
-- `trust-dns` (via [`trust-dns-resolver::AsyncResolver`])
+- `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
-[`SrvClient::new`]: client/struct.SrvClient.html#method.new
-[`SrvClient::execute`]: client/struct.SrvClient.html#method.execute
-[`SrvResolver`]: resolver/trait.SrvResolver.html
-[`Policy`]: client/policy/trait.Policy.html
-[`LibResolv`]: resolver/libresolv/struct.LibResolv.html
-[`trust-dns-resolver::AsyncResolver`]: ../trust_dns_resolver/struct.AsyncResolver.html
+[`SrvClient::new`]: client::SrvClient::new()
+[`SrvClient::execute`]: client::SrvClient::execute()
+[`SrvResolver`]: resolver::SrvResolver
+[`Policy`]: client::policy::Policy
+[`LibResolv`]: resolver::libresolv::LibResolv
 */
 
 pub mod client;

@@ -11,8 +11,6 @@ use std::{
 mod ffi;
 
 /// Errors encountered by [`LibResolv`].
-///
-/// [`LibResolv`]: struct.LibResolv.html
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum LibResolvError {
     /// Rust -> C string conversion errors.
@@ -110,8 +108,6 @@ impl SrvResolver for LibResolv {
 }
 
 /// Representation of SRV records used by [`LibResolv`].
-///
-/// [`LibResolv`]: struct.LibResolv.html
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LibResolvSrvRecord {
     /// Records's target.
