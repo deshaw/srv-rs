@@ -5,8 +5,6 @@ use http::Uri;
 use std::sync::Arc;
 
 /// Policy for [`SrvClient`] to use when selecting SRV targets to recommend.
-///
-/// [`SrvClient`]: ../struct.SrvClient.html
 #[async_trait]
 pub trait Policy: Sized {
     /// Type of item stored in a client's cache.
@@ -23,11 +21,9 @@ pub trait Policy: Sized {
 
     /// Creates an iterator of indices corresponding to cache items in the
     /// order a [`SrvClient`] should try using them to perform an operation.
-    ///
-    /// [`SrvClient`]: ../struct.SrvClient.html
     fn order(&self, items: &[Self::CacheItem]) -> Self::Ordering;
 
-    /// Converts a reference to a cached item into a reference to a `Uri`.
+    /// Converts a reference to a cached item into a reference to a [`Uri`].
     fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri;
 
     /// Makes any policy adjustments following a successful execution on `uri`.
@@ -87,9 +83,7 @@ impl Affinity {
     }
 }
 
-/// Iterator over `Uri`s based on affinity. See [`Affinity`].
-///
-/// [`Affinity`]: struct.Affinity.html
+/// Iterator over [`Uri`]s based on affinity. See [`Affinity`].
 pub struct AffinityUriIter {
     /// Number of uris in the cache.e
     n: usize,
@@ -127,7 +121,7 @@ impl Iterator for AffinityUriIter {
 #[derive(Default)]
 pub struct Rfc2782;
 
-/// Representation of a SRV record with its target and port parsed into a `Uri`.
+/// Representation of a SRV record with its target and port parsed into a [`Uri`].
 pub struct ParsedRecord {
     uri: Uri,
     priority: u16,

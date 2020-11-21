@@ -34,28 +34,23 @@ pub enum SrvError<Lookup: Debug> {
 ///
 /// # Usage
 ///
-/// After being created by [`new`] or [`new_with_resolver`], operations can be
-/// performed on the service pointed to by a `SrvClient` with the [`execute`]
-/// and [`execute_stream`] methods.
+/// After being created by [`SrvClient::new`] or [`SrvClient::new_with_resolver`],
+/// operations can be performed on the service pointed to by a [`SrvClient`] with
+/// the [`execute`] and [`execute_stream`] methods.
 ///
 /// ## DNS Resolvers
 ///
 /// The resolver used to lookup SRV records is determined by a client's
-/// [`SrvResolver`], and can be set with [`resolver`].
+/// [`SrvResolver`], and can be set with [`SrvClient::resolver`].
 ///
 /// ## SRV Target Selection Policies
 ///
 /// SRV target selection order is determined by a client's [`Policy`],
-/// and can be set with [`policy`].
+/// and can be set with [`SrvClient::policy`].
 ///
-/// [`new`]: struct.SrvClient.html#method.new
-/// [`new_with_resolver`]: struct.SrvClient.html#method.new_with_resolver
-/// [`execute`]: struct.SrvClient.html#method.execute
-/// [`execute_stream`]: struct.SrvClient.html#method.execute_stream
-/// [`SrvResolver`]: ../resolver/trait.SrvResolver.html
-/// [`resolver`]: struct.SrvClient.html#method.resolver
-/// [`Policy`]: policy/trait.Policy.html
-/// [`policy`]: struct.SrvClient.html#method.policy
+/// [`execute`]: SrvClient::execute()
+/// [`execute_stream`]: SrvClient::execute_stream()
+/// [`Policy`]: policy::Policy
 #[derive(Debug)]
 pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
     srv: String,
@@ -189,7 +184,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # }
     /// ```
     ///
-    /// [`Policy`]: policy/trait.Policy.html
+    /// [`Policy`]: policy::Policy
     pub async fn execute_stream<'a, T, E: Error, Fut>(
         &'a self,
         execution_mode: Execution,

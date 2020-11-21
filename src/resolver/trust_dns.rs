@@ -1,4 +1,4 @@
-//! SRV resolver backed by `trust-dns-resolver`.
+//! SRV resolver backed by [`trust_dns_resolver`].
 
 use super::SrvResolver;
 use crate::record::SrvRecord;
