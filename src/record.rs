@@ -2,7 +2,7 @@
 
 use http::uri::{PathAndQuery, Scheme, Uri};
 use rand::Rng;
-use std::{cmp::Reverse, convert::TryFrom, fmt::Display};
+use std::{cmp::Reverse, convert::TryInto, fmt::Display};
 
 /// Representation of types that contain the fields of a SRV record.
 pub trait SrvRecord {
@@ -46,13 +46,13 @@ pub trait SrvRecord {
     /// # Ok(())
     /// # }
     /// ```
-    fn parse<T, U>(&self, scheme: T, path_and_query: U) -> Result<Uri, http::Error>
-    where
-        Scheme: TryFrom<T>,
-        <Scheme as TryFrom<T>>::Error: Into<http::Error>,
-        PathAndQuery: TryFrom<U>,
-        <PathAndQuery as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    fn parse(
+        &self,
+        scheme: impl TryInto<Scheme, Error = impl Into<http::Error>>,
+        path_and_query: impl TryInto<PathAndQuery, Error = impl Into<http::Error>>,
+    ) -> Result<Uri, http::Error> {
+        let scheme: Scheme = scheme.try_into().map_err(Into::into)?;
+        let path_and_query: PathAndQuery = path_and_query.try_into().map_err(Into::into)?;
         Uri::builder()
             .scheme(scheme)
             .path_and_query(path_and_query)
