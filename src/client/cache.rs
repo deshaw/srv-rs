@@ -6,12 +6,13 @@ use std::time::Instant;
 /// A cache of items valid for a limited period of time.
 pub struct Cache<T> {
     valid_until: Instant,
-    items: Vec<T>,
+    items: Box<[T]>,
 }
 
 impl<T> Cache<T> {
     /// Creates a new cache of items valid until some time.
-    pub fn new(items: Vec<T>, valid_until: Instant) -> Self {
+    pub fn new(items: impl Into<Box<[T]>>, valid_until: Instant) -> Self {
+        let items = items.into();
         Self { valid_until, items }
     }
 
