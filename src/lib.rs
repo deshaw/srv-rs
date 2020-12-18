@@ -64,7 +64,6 @@ The provided resolver backends are enabled by the following features:
 
 [`SrvClient::new`]: client::SrvClient::new()
 [`SrvClient::execute`]: client::SrvClient::execute()
-[`SrvResolver`]: resolver::SrvResolver
 [`Policy`]: client::policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 */
@@ -75,6 +74,7 @@ mod record;
 pub use record::SrvRecord;
 
 pub mod resolver;
+pub use resolver::SrvResolver;
 
 #[doc(hidden)]
 pub const EXAMPLE_SRV: &str = "_http._tcp.srv-client-rust.deshaw.org";

@@ -59,7 +59,6 @@ The provided resolver backends are enabled by the following features:
 
 [`SrvClient::new`]: client::SrvClient::new()
 [`SrvClient::execute`]: client::SrvClient::execute()
-[`SrvResolver`]: resolver::SrvResolver
 [`Policy`]: client::policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 

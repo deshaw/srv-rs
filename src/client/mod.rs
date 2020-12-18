@@ -1,6 +1,6 @@
 //! Clients based on SRV lookups.
 
-use crate::{resolver::SrvResolver, SrvRecord};
+use crate::{SrvRecord, SrvResolver};
 use arc_swap::ArcSwap;
 use futures_util::{
     pin_mut,
