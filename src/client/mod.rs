@@ -1,6 +1,6 @@
 //! Clients based on SRV lookups.
 
-use crate::{SrvRecord, SrvResolver};
+use crate::{resolver::SrvResolver, SrvRecord};
 use arc_swap::ArcSwap;
 use futures_util::{
     pin_mut,
@@ -163,14 +163,15 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Examples
     ///
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError, Execution}};
-    /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-    /// # use std::convert::Infallible;
+    /// # use srv_rs::EXAMPLE_SRV;
+    /// use srv_rs::{SrvClient, SrvError, Execution};
+    /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
     /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     /// let results_stream = client.execute_stream(Execution::Serial, |address| async move {
-    ///     Ok::<_, Infallible>(address.to_string())
+    ///     Ok::<_, std::convert::Infallible>(address.to_string())
     /// })
     /// .await?;
     /// // Do something with the stream, for example collect all results into a `Vec`:
@@ -236,15 +237,16 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Examples
     ///
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, client::{SrvClient, SrvError, Execution}};
-    /// # use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
-    /// # use std::convert::Infallible;
+    /// # use srv_rs::EXAMPLE_SRV;
+    /// use srv_rs::{SrvClient, SrvError, Execution};
+    /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     ///
     /// let res = client.execute(Execution::Serial, |address| async move {
-    ///     Ok::<_, Infallible>(address.to_string())
+    ///     Ok::<_, std::convert::Infallible>(address.to_string())
     /// })
     /// .await?;
     /// assert!(res.is_ok());
@@ -314,8 +316,8 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// # Examples
     ///
     /// ```
-    /// # use srv_rs::{EXAMPLE_SRV, };
-    /// use srv_rs::{client::{SrvClient, policy::Rfc2782}, resolver::libresolv::LibResolv};
+    /// # use srv_rs::EXAMPLE_SRV;
+    /// use srv_rs::{SrvClient, policy::Rfc2782, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
     /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {

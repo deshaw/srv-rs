@@ -32,7 +32,7 @@ It presents this service in the following interface:
 ```
 # #[tokio::main]
 # async fn main() {
-use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
+use srv_rs::{SrvClient, Execution, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
 client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
@@ -62,18 +62,18 @@ The provided resolver backends are enabled by the following features:
 - `libresolv` (via [`LibResolv`])
 - `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
-[`Policy`]: client::policy::Policy
+[`SrvResolver`]: resolver::SrvResolver
+[`Policy`]: policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 */
 
-pub mod client;
-pub use client::SrvClient;
+mod client;
+pub use client::{policy, Execution, SrvClient, SrvError};
 
 mod record;
 pub use record::SrvRecord;
 
 pub mod resolver;
-pub use resolver::SrvResolver;
 
 #[doc(hidden)]
 pub const EXAMPLE_SRV: &str = "_http._tcp.srv-client-rust.deshaw.org";

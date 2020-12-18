@@ -1,9 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
-use srv_rs::{
-    client::{policy::Rfc2782, Execution, SrvClient},
-    resolver::libresolv::LibResolv,
-};
+use srv_rs::{policy::Rfc2782, resolver::libresolv::LibResolv, Execution, SrvClient};
 
 const SRV_NAME: &str = srv_rs::EXAMPLE_SRV;
 const SRV_DESCRIPTION: &str = SRV_NAME;

@@ -28,7 +28,7 @@ selection of targets to use for communication with SRV-located services.
 It presents this service in the following interface:
 
 ```rust
-use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
+use srv_rs::{SrvClient, Execution, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
 client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
@@ -57,7 +57,8 @@ The provided resolver backends are enabled by the following features:
 - `libresolv` (via [`LibResolv`])
 - `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
-[`Policy`]: client::policy::Policy
+[`SrvResolver`]: resolver::SrvResolver
+[`Policy`]: policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 
 ## Usage
