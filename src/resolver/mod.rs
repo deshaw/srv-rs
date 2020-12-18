@@ -9,7 +9,7 @@ use std::time::Instant;
 pub mod libresolv;
 
 #[cfg(feature = "trust-dns")]
-pub mod trust_dns;
+mod trust_dns;
 
 /// Represents the ability to act as a SRV resolver.
 #[async_trait]
