@@ -1,6 +1,6 @@
 [package]
 name = "srv-rs"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Max Heller <max.a.heller@gmail.com>"]
 edition = "2018"
 description = "Rust client for communicating with SRV-located services"

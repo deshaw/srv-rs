@@ -69,7 +69,7 @@ the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-res
 
 ```toml
 [dependencies]
-srv-rs = { version = "0.1.1", features = ["libresolv"] }
+srv-rs = { version = "0.2.0", features = ["libresolv"] }
 ```
 
 ## Contributing
