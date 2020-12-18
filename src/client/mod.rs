@@ -10,8 +10,8 @@ use futures_util::{
 use http::uri::{Scheme, Uri};
 use std::{error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Instant};
 
-pub mod cache;
-use cache::Cache;
+mod cache;
+pub use cache::Cache;
 
 /// SRV target selection policies.
 pub mod policy;
