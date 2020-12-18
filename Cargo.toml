@@ -1,6 +1,6 @@
 [package]
 name = "srv-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Max Heller <max.a.heller@gmail.com>"]
 edition = "2018"
 description = "Rust client for communicating with SRV-located services"
@@ -12,6 +12,9 @@ keywords = ["srv", "record", "dns", "resolve", "libresolv"]
 categories = ["network-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = ["log"]
