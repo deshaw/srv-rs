@@ -1,7 +1,7 @@
 //! SRV resolver backed by [`trust_dns_resolver`].
 
 use super::SrvResolver;
-use crate::record::SrvRecord;
+use crate::SrvRecord;
 use async_trait::async_trait;
 use std::time::Instant;
 use trust_dns_resolver::{
@@ -77,7 +77,7 @@ mod tests {
     #[tokio::test]
     async fn get_fresh_uris() -> Result<(), ResolveError> {
         let resolver = AsyncResolver::tokio_from_system_conf().await?;
-        let client = crate::client::SrvClient::<_>::new_with_resolver(crate::EXAMPLE_SRV, resolver);
+        let client = crate::SrvClient::<_>::new_with_resolver(crate::EXAMPLE_SRV, resolver);
         let (uris, _) = client.get_fresh_uri_candidates().await.unwrap();
         assert_ne!(uris, Vec::<http::Uri>::new());
         Ok(())

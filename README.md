@@ -28,7 +28,7 @@ selection of targets to use for communication with SRV-located services.
 It presents this service in the following interface:
 
 ```rust
-use srv_rs::{client::{SrvClient, Execution}, resolver::libresolv::LibResolv};
+use srv_rs::{SrvClient, Execution, resolver::libresolv::LibResolv};
 let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
 client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
@@ -57,10 +57,8 @@ The provided resolver backends are enabled by the following features:
 - `libresolv` (via [`LibResolv`])
 - `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
-[`SrvClient::new`]: client::SrvClient::new()
-[`SrvClient::execute`]: client::SrvClient::execute()
 [`SrvResolver`]: resolver::SrvResolver
-[`Policy`]: client::policy::Policy
+[`Policy`]: policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 
 ## Usage
@@ -71,17 +69,17 @@ the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-res
 
 ```toml
 [dependencies]
-srv-rs = { git = "https://github.com/deshaw/srv-rs", features = ["libresolv"] }
+srv-rs = { version = "0.1.1", features = ["libresolv"] }
 ```
 
 ## Contributing
 
 1. Clone the repo
 2. Make some changes
-3. Test: `cargo test`
+3. Test: `cargo test --all-features`
 4. Format: `cargo fmt`
-5. Clippy: `cargo clippy`
-6. Bench: `cargo bench`
+5. Clippy: `cargo clippy --all-features --tests -- -Dclippy::all`
+6. Bench: `cargo bench --all-features`
 7. If modifying crate-level docs (`src/lib.rs`) or `README.tpl`, update `README.md`:
     1. `cargo install cargo-readme`
     2. `cargo readme > README.md`

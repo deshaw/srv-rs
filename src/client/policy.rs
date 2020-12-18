@@ -1,8 +1,10 @@
-use crate::client::{Cache, SrvClient, SrvError, SrvRecord, SrvResolver};
+use crate::{resolver::SrvResolver, SrvClient, SrvError, SrvRecord};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use http::Uri;
 use std::sync::Arc;
+
+pub use super::Cache;
 
 /// Policy for [`SrvClient`] to use when selecting SRV targets to recommend.
 #[async_trait]

@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@clippy
-      - run: cargo clippy --tests -- -Dclippy::all
+      - run: cargo clippy --all-features --tests -- -Dclippy::all
 
   cargo-readme:
     runs-on: ubuntu-16.04

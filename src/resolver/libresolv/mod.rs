@@ -1,6 +1,7 @@
 //! SRV Resolver backed by `libresolv`.
 
-use super::{SrvRecord, SrvResolver};
+use super::SrvResolver;
+use crate::SrvRecord;
 use async_trait::async_trait;
 use std::{
     convert::TryInto,

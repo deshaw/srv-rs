@@ -1,6 +1,6 @@
 //! SRV resolvers.
 
-use crate::record::SrvRecord;
+use crate::SrvRecord;
 use async_trait::async_trait;
 use rand::Rng;
 use std::time::Instant;
@@ -9,7 +9,7 @@ use std::time::Instant;
 pub mod libresolv;
 
 #[cfg(feature = "trust-dns")]
-pub mod trust_dns;
+mod trust_dns;
 
 /// Represents the ability to act as a SRV resolver.
 #[async_trait]

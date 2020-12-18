@@ -27,8 +27,7 @@ pub trait SrvRecord {
     ///
     /// ```
     /// # fn srv_record_parse() -> Result<(), http::Error> {
-    /// # use std::time::Duration;
-    /// # use srv_rs::{resolver::libresolv::LibResolvSrvRecord, record::SrvRecord};
+    /// use srv_rs::{resolver::libresolv::LibResolvSrvRecord, SrvRecord};
     /// let record = LibResolvSrvRecord {
     ///     priority: 1,
     ///     weight: 100,
@@ -67,7 +66,7 @@ pub trait SrvRecord {
 }
 
 /// Generates a key to sort a SRV record by priority and weight per RFC 2782.
-pub fn sort_key(priority: u16, weight: u16, mut rng: impl Rng) -> (u16, Reverse<u32>) {
+pub(crate) fn sort_key(priority: u16, weight: u16, mut rng: impl Rng) -> (u16, Reverse<u32>) {
     // Sort ascending by priority, then descending (hence `Reverse`) by randomized weight
     let rand = rng.gen::<u16>() as u32;
     (priority, Reverse(weight as u32 * rand))
