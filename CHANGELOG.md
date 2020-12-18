@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Flattened `crate::client` and `crate::record` modules in public API
+- Renamed `SrvError` to `Error`
 - Exported `Cache` from `crate::policy`
 - Hid empty `crate::resolver::trust_dns` module
 - Updated README contributing section and `crates.io` dependency
