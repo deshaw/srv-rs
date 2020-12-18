@@ -1,6 +1,6 @@
 //! SRV resolvers.
 
-use crate::record::SrvRecord;
+use crate::SrvRecord;
 use async_trait::async_trait;
 use rand::Rng;
 use std::time::Instant;

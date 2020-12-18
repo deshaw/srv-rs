@@ -1,7 +1,7 @@
 //! SRV resolver backed by [`trust_dns_resolver`].
 
 use super::SrvResolver;
-use crate::record::SrvRecord;
+use crate::SrvRecord;
 use async_trait::async_trait;
 use std::time::Instant;
 use trust_dns_resolver::{

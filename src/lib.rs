@@ -71,7 +71,8 @@ The provided resolver backends are enabled by the following features:
 
 pub mod client;
 
-pub mod record;
+mod record;
+pub use record::SrvRecord;
 
 pub mod resolver;
 
