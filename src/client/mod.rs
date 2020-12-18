@@ -8,7 +8,7 @@ use futures_util::{
     FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{error::Error, fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Instant};
+use std::{fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Instant};
 
 mod cache;
 pub use cache::Cache;
@@ -16,9 +16,9 @@ pub use cache::Cache;
 /// SRV target selection policies.
 pub mod policy;
 
-/// Errors encountered during SRV record resolution
+/// Errors encountered by a [`SrvClient`].
 #[derive(Debug, thiserror::Error)]
-pub enum SrvError<Lookup: Debug> {
+pub enum Error<Lookup: Debug> {
     /// SRV lookup errors
     #[error("SRV lookup error")]
     Lookup(Lookup),
@@ -108,11 +108,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// them along with the time they're valid until.
     pub async fn get_srv_records(
         &self,
-    ) -> Result<(Vec<Resolver::Record>, Instant), SrvError<Resolver::Error>> {
+    ) -> Result<(Vec<Resolver::Record>, Instant), Error<Resolver::Error>> {
         self.resolver
             .get_srv_records(&self.srv)
             .await
-            .map_err(SrvError::Lookup)
+            .map_err(Error::Lookup)
     }
 
     /// Gets a fresh set of SRV records from a client's DNS resolver and parses
@@ -121,7 +121,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// should expire.
     pub async fn get_fresh_uri_candidates(
         &self,
-    ) -> Result<(Vec<Uri>, Instant), SrvError<Resolver::Error>> {
+    ) -> Result<(Vec<Uri>, Instant), Error<Resolver::Error>> {
         // Query DNS for the SRV record
         let (records, valid_until) = self.get_srv_records().await?;
 
@@ -134,9 +134,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         Ok((uris, valid_until))
     }
 
-    async fn refresh_cache(
-        &self,
-    ) -> Result<Arc<Cache<Policy::CacheItem>>, SrvError<Resolver::Error>> {
+    async fn refresh_cache(&self) -> Result<Arc<Cache<Policy::CacheItem>>, Error<Resolver::Error>> {
         let new_cache = Arc::new(self.policy.refresh_cache(self).await?);
         self.cache.store(new_cache.clone());
         Ok(new_cache)
@@ -145,7 +143,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// Gets a client's cached items, refreshing the existing cache if it is invalid.
     async fn get_valid_cache(
         &self,
-    ) -> Result<Arc<Cache<Policy::CacheItem>>, SrvError<Resolver::Error>> {
+    ) -> Result<Arc<Cache<Policy::CacheItem>>, Error<Resolver::Error>> {
         match self.cache.load_full() {
             cache if cache.valid() => Ok(cache),
             _ => self.refresh_cache().await,
@@ -164,11 +162,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     ///
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
-    /// use srv_rs::{SrvClient, SrvError, Execution};
+    /// use srv_rs::{SrvClient, Error, Execution};
     /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+    /// # async fn main() -> Result<(), Error<LibResolvError>> {
     /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     /// let results_stream = client.execute_stream(Execution::Serial, |address| async move {
     ///     Ok::<_, std::convert::Infallible>(address.to_string())
@@ -185,12 +183,13 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// ```
     ///
     /// [`Policy`]: policy::Policy
-    pub async fn execute_stream<'a, T, E: Error, Fut>(
+    pub async fn execute_stream<'a, T, E, Fut>(
         &'a self,
         execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut + 'a,
-    ) -> Result<impl Stream<Item = Result<T, E>> + 'a, SrvError<Resolver::Error>>
+    ) -> Result<impl Stream<Item = Result<T, E>> + 'a, Error<Resolver::Error>>
     where
+        E: std::error::Error,
         Fut: Future<Output = Result<T, E>> + 'a,
     {
         let mut func = func;
@@ -238,11 +237,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     ///
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
-    /// use srv_rs::{SrvClient, SrvError, Execution};
+    /// use srv_rs::{SrvClient, Error, Execution};
     /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), SrvError<LibResolvError>> {
+    /// # async fn main() -> Result<(), Error<LibResolvError>> {
     /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     ///
     /// let res = client.execute(Execution::Serial, |address| async move {
@@ -259,12 +258,13 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn execute<T, E: Error, Fut>(
+    pub async fn execute<T, E, Fut>(
         &self,
         execution_mode: Execution,
         func: impl FnMut(Uri) -> Fut,
-    ) -> Result<Result<T, E>, SrvError<Resolver::Error>>
+    ) -> Result<Result<T, E>, Error<Resolver::Error>>
     where
+        E: std::error::Error,
         Fut: Future<Output = Result<T, E>>,
     {
         let results = self.execute_stream(execution_mode, func).await?;
@@ -281,7 +281,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         if let Some(err) = last_error {
             Ok(Err(err))
         } else {
-            Err(SrvError::NoTargets)
+            Err(Error::NoTargets)
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::{resolver::SrvResolver, SrvClient, SrvError, SrvRecord};
+use crate::{resolver::SrvResolver, Error, SrvClient, SrvRecord};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use http::Uri;
@@ -19,7 +19,7 @@ pub trait Policy: Sized {
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
         client: &SrvClient<Resolver, Self>,
-    ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>>;
+    ) -> Result<Cache<Self::CacheItem>, Error<Resolver::Error>>;
 
     /// Creates an iterator of indices corresponding to cache items in the
     /// order a [`SrvClient`] should try using them to perform an operation.
@@ -52,7 +52,7 @@ impl Policy for Affinity {
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
         client: &SrvClient<Resolver, Self>,
-    ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>> {
+    ) -> Result<Cache<Self::CacheItem>, Error<Resolver::Error>> {
         let (uris, valid_until) = client.get_fresh_uri_candidates().await?;
         Ok(Cache::new(uris, valid_until))
     }
@@ -148,7 +148,7 @@ impl Policy for Rfc2782 {
     async fn refresh_cache<Resolver: SrvResolver>(
         &self,
         client: &SrvClient<Resolver, Self>,
-    ) -> Result<Cache<Self::CacheItem>, SrvError<Resolver::Error>> {
+    ) -> Result<Cache<Self::CacheItem>, Error<Resolver::Error>> {
         let (records, valid_until) = client.get_srv_records().await?;
         let parsed = records
             .iter()
