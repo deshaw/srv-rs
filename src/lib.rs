@@ -62,13 +62,12 @@ The provided resolver backends are enabled by the following features:
 - `libresolv` (via [`LibResolv`])
 - `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
-[`SrvClient::new`]: client::SrvClient::new()
-[`SrvClient::execute`]: client::SrvClient::execute()
 [`Policy`]: client::policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
 */
 
 pub mod client;
+pub use client::SrvClient;
 
 mod record;
 pub use record::SrvRecord;

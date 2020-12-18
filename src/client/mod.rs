@@ -81,8 +81,7 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
     ///
     /// # Examples
     /// ```
-    /// # use srv_rs::EXAMPLE_SRV;
-    /// use srv_rs::{client::SrvClient, resolver::libresolv::LibResolv};
+    /// use srv_rs::{SrvClient, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
     /// ```
     pub fn new(srv_name: impl ToString) -> Self {
