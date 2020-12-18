@@ -68,17 +68,17 @@ the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-res
 
 ```toml
 [dependencies]
-srv-rs = { git = "https://github.com/deshaw/srv-rs", features = ["libresolv"] }
+srv-rs = { version = "0.1.1", features = ["libresolv"] }
 ```
 
 ## Contributing
 
 1. Clone the repo
 2. Make some changes
-3. Test: `cargo test`
+3. Test: `cargo test --all-features`
 4. Format: `cargo fmt`
-5. Clippy: `cargo clippy`
-6. Bench: `cargo bench`
+5. Clippy: `cargo clippy --all-features --tests -- -Dclippy::all`
+6. Bench: `cargo bench --all-features`
 7. If modifying crate-level docs (`src/lib.rs`) or `README.tpl`, update `README.md`:
     1. `cargo install cargo-readme`
     2. `cargo readme > README.md`
