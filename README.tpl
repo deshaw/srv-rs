@@ -1,5 +1,8 @@
 # {{crate}}
 
+[![Test Status](https://github.com/deshaw/{{crate}}/workflows/Rust/badge.svg?event=push)](https://github.com/deshaw/{{crate}}/actions)
+[![Crate](https://img.shields.io/crates/v/{{crate}}.svg)](https://crates.io/crates/{{crate}})
+
 {{readme}}
 
 ## Usage

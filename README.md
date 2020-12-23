@@ -1,5 +1,8 @@
 # srv-rs
 
+[![Test Status](https://github.com/deshaw/srv-rs/workflows/Rust/badge.svg?event=push)](https://github.com/deshaw/srv-rs/actions)
+[![Crate](https://img.shields.io/crates/v/srv-rs.svg)](https://crates.io/crates/srv-rs)
+
 Rust client for communicating with services located by DNS SRV records.
 
 ## Introduction
