@@ -192,11 +192,12 @@ mod tests {
 
     #[tokio::test]
     async fn srv_lookup() -> Result<(), LibResolvError> {
+        let now = Instant::now();
         let (records, valid_until) = LibResolv::default()
             .get_srv_records_unordered(crate::EXAMPLE_SRV)
             .await?;
         assert_ne!(records.len(), 0);
-        assert!(valid_until > Instant::now());
+        assert!(valid_until > now);
         Ok(())
     }
 
