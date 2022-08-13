@@ -87,6 +87,9 @@ srv-rs = { version = "0.2.0", features = ["libresolv"] }
     1. `cargo install cargo-readme`
     2. `cargo readme > README.md`
 
+We love contributions! Before you can contribute, please sign and submit this [Contributor License Agreement (CLA)](https://www.deshaw.com/oss/cla).
+This CLA is in place to protect all users of this project.
+
 ## History
 
 This project was contributed back to the community by the [D. E. Shaw group](https://www.deshaw.com/).
