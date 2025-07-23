@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![warn(broken_intra_doc_links)]
+#![warn(rustdoc::broken_intra_doc_links)]
 
 /*!
 Rust client for communicating with services located by DNS SRV records.
