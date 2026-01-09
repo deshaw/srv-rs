@@ -163,7 +163,7 @@ impl Policy for Rfc2782 {
 
     fn order(&self, records: &[ParsedRecord]) -> Self::Ordering {
         let mut indices = (0..records.len()).collect::<Vec<_>>();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         indices.sort_by_cached_key(|&idx| {
             let (priority, weight) = (records[idx].priority, records[idx].weight);
             crate::record::sort_key(priority, weight, &mut rng)
