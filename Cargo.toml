@@ -42,6 +42,10 @@ criterion = "0.8.1"
 futures = "0.3"
 hyper = "0.13"
 tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
+tempfile = "3.24.0"
+owo-colors = "4.2.3"
+hickory-proto = "0.25"
+rayon = "1.11.0"
 
 [[bench]]
 name = "client"
@@ -49,4 +53,8 @@ harness = false
 
 [[bench]]
 name = "resolver"
+harness = false
+
+[[test]]
+name = "run_integration_tests"
 harness = false
