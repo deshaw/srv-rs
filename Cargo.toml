@@ -22,6 +22,7 @@ default = ["log"]
 libresolv = ["resolv"]
 log = ["tracing"]
 trust-dns = ["trust-dns-resolver"]
+hickory = ["hickory-resolver"]
 
 [dependencies]
 arc-swap = "1.8.0"
@@ -39,9 +40,10 @@ resolv = { version = "0.4", git = "https://github.com/mikedilger/resolv-rs.git",
 thiserror = { version = "2.0.17", default-features = false }
 tracing = { version = "0.1.43", optional = true }
 trust-dns-resolver = { version = "0.19", optional = true }
+hickory-resolver = { version = "0.25", optional = true }
 
 [dev-dependencies]
-srv-rs = { path = ".", features = ["libresolv", "trust-dns"] }
+srv-rs = { path = ".", features = ["libresolv", "trust-dns", "hickory"] }
 criterion = "0.8.1"
 futures = "0.3"
 hyper = "0.13"
