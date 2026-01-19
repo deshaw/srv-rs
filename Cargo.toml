@@ -38,7 +38,7 @@ trust-dns-resolver = { version = "0.19", optional = true }
 
 [dev-dependencies]
 srv-rs = { path = ".", features = ["libresolv", "trust-dns"] }
-criterion = "0.3"
+criterion = "0.8.1"
 futures = "0.3"
 hyper = "0.13"
 tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
