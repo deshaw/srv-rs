@@ -37,6 +37,7 @@ tracing = { version = "0.1.43", optional = true }
 trust-dns-resolver = { version = "0.19", optional = true }
 
 [dev-dependencies]
+srv-rs = { path = ".", features = ["libresolv", "trust-dns"] }
 criterion = "0.3"
 futures = "0.3"
 hyper = "0.13"
