@@ -11,6 +11,9 @@ pub mod libresolv;
 #[cfg(feature = "trust-dns")]
 mod trust_dns;
 
+#[cfg(feature = "hickory")]
+mod hickory;
+
 /// Represents the ability to act as a SRV resolver.
 #[async_trait]
 pub trait SrvResolver: Send + Sync {
