@@ -36,7 +36,13 @@ fn simple_lookup_srv_multiple() {
                 300,
             ),
         ]))
-        .run_with_tokio(|| test_simple_lookup_srv_multiple(LibResolv));
+        .run_with_tokio(|| async {
+            test_simple_lookup_srv_multiple(LibResolv).await;
+            test_simple_lookup_srv_multiple(
+                hickory_resolver::Resolver::builder_tokio().unwrap().build(),
+            )
+            .await;
+        });
 }
 
 async fn test_simple_lookup_srv_multiple(resolver: impl SrvResolver) {

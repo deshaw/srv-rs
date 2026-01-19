@@ -8,6 +8,9 @@ use std::time::Instant;
 #[cfg(feature = "libresolv")]
 pub mod libresolv;
 
+#[cfg(feature = "hickory")]
+mod hickory;
+
 /// Represents the ability to act as a SRV resolver.
 #[async_trait]
 pub trait SrvResolver: Send + Sync {

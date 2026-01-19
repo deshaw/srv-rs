@@ -18,7 +18,13 @@ fn simple_lookup_srv_single() {
             "server1.test.local.",
             300,
         )]))
-        .run_with_tokio(|| test_simple_lookup_srv_single(LibResolv));
+        .run_with_tokio(|| async {
+            test_simple_lookup_srv_single(LibResolv).await;
+            test_simple_lookup_srv_single(
+                hickory_resolver::Resolver::builder_tokio().unwrap().build(),
+            )
+            .await;
+        });
 }
 
 async fn test_simple_lookup_srv_single(resolver: impl SrvResolver) {
@@ -31,5 +37,8 @@ async fn test_simple_lookup_srv_single(resolver: impl SrvResolver) {
     assert_eq!(record.priority(), 10);
     assert_eq!(record.weight(), 100);
     assert_eq!(record.port(), 8080);
-    assert_eq!(record.target().to_string(), "server1.test.local");
+    assert_eq!(
+        record.target().to_string().trim_end_matches('.'),
+        "server1.test.local"
+    );
 }
