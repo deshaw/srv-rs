@@ -8,9 +8,6 @@ use std::time::Instant;
 #[cfg(feature = "libresolv")]
 pub mod libresolv;
 
-#[cfg(feature = "trust-dns")]
-mod trust_dns;
-
 #[cfg(feature = "hickory")]
 mod hickory;
 

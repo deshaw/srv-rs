@@ -61,7 +61,6 @@ The provided resolver backends are enabled by the following features:
 
 - `hickory` (via [`hickory_resolver::Resolver`])
 - `libresolv` (via [`LibResolv`])
-- `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
 [`SrvResolver`]: resolver::SrvResolver
 [`Policy`]: policy::Policy

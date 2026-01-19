@@ -1,17 +1,12 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use hickory_resolver::{Resolver, TokioResolver};
 use srv_rs::resolver::{libresolv::LibResolv, SrvResolver};
-use trust_dns_resolver::{AsyncResolver, TokioAsyncResolver};
 
 /// Benchmark the performance of the resolver.
 #[allow(clippy::missing_panics_doc)]
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
     let libresolv = LibResolv;
-    // Disable trust-dns caching so benches are fair
-    let (conf, mut opts) = trust_dns_resolver::system_conf::read_system_conf().unwrap();
-    opts.cache_size = 0;
-    let trust_dns = runtime.block_on(AsyncResolver::tokio(conf, opts)).unwrap();
     // Disable hickory caching so benches are fair
     let mut hickory_builder = Resolver::builder_tokio().unwrap();
     hickory_builder.options_mut().cache_size = 0;
@@ -22,13 +17,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             runtime
                 .block_on(libresolv.get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
-                .unwrap()
-        });
-    });
-    group.bench_function("trust-dns", |b| {
-        b.iter(|| {
-            runtime
-                .block_on(trust_dns.get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
                 .unwrap()
         });
     });
@@ -50,13 +38,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .unwrap()
         });
     });
-    group.bench_function("trust-dns", |b| {
-        b.iter(|| {
-            runtime
-                .block_on(trust_dns.get_srv_records_unordered(gmail))
-                .unwrap()
-        });
-    });
     group.bench_function("hickory", |b| {
         b.iter(|| {
             runtime
@@ -73,12 +54,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     group.bench_function("libresolv", |b| {
         b.iter(|| LibResolv::order_srv_records(&mut records.clone(), &mut rng));
-    });
-    let (records, _) = runtime
-        .block_on(trust_dns.get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
-        .unwrap();
-    group.bench_function("trust-dns", |b| {
-        b.iter(|| TokioAsyncResolver::order_srv_records(&mut records.clone(), &mut rng));
     });
     let (records, _) = runtime
         .block_on(hickory.get_srv_records_unordered(srv_rs::EXAMPLE_SRV))
