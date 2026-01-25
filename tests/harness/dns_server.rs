@@ -1,19 +1,19 @@
 //! Minimal mock DNS server for testing SRV record resolution.
-//!
-//! Uses hickory-proto for DNS message parsing/encoding but runs a synchronous
-//! UDP server to avoid async runtime compatibility issues with tokio 0.2.
 
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::Duration;
 
-use hickory_proto::op::{Message, MessageType, OpCode, ResponseCode};
-use hickory_proto::rr::rdata::SRV;
-use hickory_proto::rr::{Name, RData, Record, RecordType};
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use hickory_proto::{
+    op::{Message, MessageType, OpCode, ResponseCode},
+    rr::{rdata::SRV, Name, RData, Record, RecordType},
+    serialize::binary::{BinDecodable, BinEncodable},
+};
 
 use crate::harness::MockSrv;
 
@@ -77,13 +77,6 @@ impl DnsServer {
 
     fn handle_query(&self, query_bytes: &[u8]) -> Result<Vec<u8>, ()> {
         let query = Message::from_bytes(query_bytes).map_err(|_| ())?;
-        let mut response = Message::new();
-        response.set_id(query.id());
-        response.set_message_type(MessageType::Response);
-        response.set_op_code(OpCode::Query);
-        response.set_authoritative(true);
-        response.set_recursion_desired(query.recursion_desired());
-        response.set_recursion_available(false);
         assert!(
             query
                 .queries()
@@ -92,21 +85,27 @@ impl DnsServer {
             "expected only SRV queries in the query",
         );
 
+        let mut response = Message::new();
+        response.set_id(query.id());
+        response.set_message_type(MessageType::Response);
+        response.set_op_code(OpCode::Query);
+        response.set_authoritative(true);
+        response.set_recursion_desired(query.recursion_desired());
+        response.set_recursion_available(false);
+
         for question in query.queries() {
             response.add_query(question.clone());
             let qname = Self::normalize_name(&question.name().to_string());
-            let answers: Vec<_> = self
+            let answers = self
                 .records
                 .iter()
                 .filter(|srv| Self::normalize_name(srv.name) == qname)
-                .filter_map(|srv| Self::create_srv_record(srv, question.name().clone()).ok())
-                .collect();
-
-            if answers.is_empty() {
-                response.set_response_code(ResponseCode::NXDomain);
-            }
-
+                .filter_map(|srv| Self::create_srv_record(srv, question.name().clone()).ok());
             response.add_answers(answers);
+        }
+
+        if response.answers().is_empty() {
+            response.set_response_code(ResponseCode::NXDomain);
         }
 
         response.to_bytes().map_err(|_| ())
@@ -150,7 +149,8 @@ impl ShutdownHandle {
         self.0.store(true, Ordering::Relaxed);
     }
 
-    pub fn is_shutdown(&self) -> bool {
+    /// Returns `true` if a shutdown has been requested.
+    fn is_shutdown(&self) -> bool {
         self.0.load(Ordering::Relaxed)
     }
 }

@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Command, ExitCode, Output};
 
 use owo_colors::OwoColorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -19,7 +19,8 @@ impl TestHarness {
 
     /// Setup the test harness.
     /// Run all the tests or run a single test if a test name is provided.
-    pub fn setup(tests: &[&Test]) {
+    /// Returns `ExitCode::SUCCESS` if all tests pass, `ExitCode::FAILURE` otherwise.
+    pub fn setup(tests: &[&Test]) -> ExitCode {
         // Run a single test if one is specified
         let args: Vec<String> = std::env::args().collect();
         if let Some(test_name) = args.get(1).and_then(|s| s.strip_prefix(Self::TEST_ARG)) {
@@ -30,7 +31,7 @@ impl TestHarness {
             let _dns =
                 DnsServer::spawn(test.config.dns_records).expect("failed to start DNS server");
             (test.run)();
-            return;
+            return ExitCode::SUCCESS;
         }
 
         // General case: run all tests in parallel, isolated processes
@@ -53,8 +54,10 @@ impl TestHarness {
         let failed = tests.len() - passed;
         if failed > 0 {
             println!("{}{failed}", "failed: ".red());
+            ExitCode::FAILURE
         } else {
             println!("{}", "all tests passed".green());
+            ExitCode::SUCCESS
         }
     }
 

@@ -14,27 +14,27 @@ pub static TEST_SIMPLE_LOOKUP_SRV_MULTIPLE: Test = Test {
         mock_files: DEFAULT_MOCK_FILES,
         dns_records: &[
             MockSrv::new(
-                "_http._tcp.multi.local",
+                "_http._tcp.multi.local.",
                 10,
                 100,
                 8080,
-                "primary.multi.local",
+                "primary.multi.local.",
                 300,
             ),
             MockSrv::new(
-                "_http._tcp.multi.local",
+                "_http._tcp.multi.local.",
                 20,
                 50,
                 8081,
-                "secondary.multi.local",
+                "secondary.multi.local.",
                 300,
             ),
             MockSrv::new(
-                "_http._tcp.multi.local",
+                "_http._tcp.multi.local.",
                 10,
                 25,
                 8082,
-                "backup.multi.local",
+                "backup.multi.local.",
                 300,
             ),
         ],
@@ -47,7 +47,7 @@ fn test_simple_lookup_srv_multiple() {
     rt.block_on(async {
         let resolver = LibResolv::default();
         let (records, _valid_until) = resolver
-            .get_srv_records("_http._tcp.multi.local")
+            .get_srv_records("_http._tcp.multi.local.")
             .await
             .expect("SRV lookup failed");
 

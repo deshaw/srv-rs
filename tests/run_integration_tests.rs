@@ -10,6 +10,6 @@ static TESTS: &[&Test] = &[
     &tests::TEST_SIMPLE_LOOKUP_SRV_MULTIPLE,
 ];
 
-fn main() {
-    TestHarness::setup(TESTS);
+fn main() -> std::process::ExitCode {
+    TestHarness::setup(TESTS)
 }
