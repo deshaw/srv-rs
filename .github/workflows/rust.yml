@@ -44,6 +44,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # Diagnostic steps
+      - name: Check glibc version
+        run: ldd --version
+
+      - name: Check libresolv location and symbols
+        run: |
+          # Find libresolv
+          find /lib /usr/lib -name 'libresolv*' 2>/dev/null || true
+
+          # Check what symbols are exported (look for dn_expand and res_nsearch variants)
+          echo "=== Symbols in libresolv.so ==="
+          nm -D /lib/x86_64-linux-gnu/libresolv.so.2 2>/dev/null | grep -E '(dn_expand|res_nsearch)' || true
+
+          # Also check with objdump
+          echo "=== Dynamic symbols via objdump ==="
+          objdump -T /lib/x86_64-linux-gnu/libresolv.so.2 2>/dev/null | grep -E '(dn_expand|res_nsearch)' || true
+
+      - name: Check libresolv-sys bindings
+        run: |
+          # See what symbols libresolv-sys is trying to link
+          cargo fetch
+          find ~/.cargo/registry/src -path '*libresolv-sys*' -name '*.rs' -exec grep -l 'extern' {} \; | head -5 | xargs cat 2>/dev/null || true
+
+
       - name: Build
         run: |
           cargo build \
