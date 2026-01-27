@@ -45,8 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install bubblewrap
-        run: sudo apt update && sudo apt install -y bubblewrap
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap libclang-dev
+          cargo install bindgen-cli
       # Diagnostic steps
       - name: Check glibc version
         run: ldd --version
