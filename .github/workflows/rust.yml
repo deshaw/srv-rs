@@ -48,7 +48,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y bubblewrap
-          sudo sysctl -w kernel.unprivileged_userns_clone=1
           echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
           cargo install bindgen-cli
       - name: Run tests
