@@ -13,7 +13,7 @@ env:
 
 jobs:
   format:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -22,7 +22,7 @@ jobs:
       - run: cargo fmt --check
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -41,10 +41,12 @@ jobs:
             --deny clippy::cargo
 
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install bubblewrap
+        run: sudo apt update && sudo apt install -y bubblewrap
       # Diagnostic steps
       - name: Check glibc version
         run: ldd --version
@@ -85,7 +87,7 @@ jobs:
             --verbose
 
   documentation:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: "-D warnings"
     steps:
