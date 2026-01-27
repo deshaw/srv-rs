@@ -45,8 +45,7 @@ fn test_simple_lookup_srv_multiple() {
     TEST_SIMPLE_LOOKUP_SRV_MULTIPLE.config.validate();
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let resolver = LibResolv::default();
-        let (records, _valid_until) = resolver
+        let (records, _valid_until) = LibResolv
             .get_srv_records("_http._tcp.multi.local.")
             .await
             .expect("SRV lookup failed");

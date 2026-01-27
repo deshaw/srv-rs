@@ -27,8 +27,7 @@ fn test_simple_lookup_srv_single() {
     TEST_SIMPLE_LOOKUP_SRV_SINGLE.config.validate();
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let resolver = LibResolv::default();
-        let (records, _valid_until) = resolver
+        let (records, _valid_until) = LibResolv
             .get_srv_records_unordered("_http._tcp.test.local.")
             .await
             .expect("SRV lookup failed");
