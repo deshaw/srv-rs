@@ -48,17 +48,10 @@ jobs:
       - name: Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y bubblewrap libclang-dev
+          sudo apt-get install -y bubblewrap
           sudo sysctl -w kernel.unprivileged_userns_clone=1
           echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
           cargo install bindgen-cli
-      - name: Build
-        run: |
-          cargo build \
-            --workspace \
-            --all-features \
-            --all-targets \
-            --verbose
       - name: Run tests
         run: |
           cargo test \
