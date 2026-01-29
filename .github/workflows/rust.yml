@@ -1,0 +1,43 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches: 
+      - master
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: |
+          cargo fmt --check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          cargo install bindgen-cli
+      - name: Run tests
+        run: |
+          cargo test \
+            --workspace \
+            --all-features \
+            --all-targets \
+            --verbose
