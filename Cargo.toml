@@ -31,7 +31,10 @@ http = "0.2"
 rand = { version = "0.9.2", default-features = false, features = [
     'thread_rng',
 ] }
-# Resolv 0.4 has not yet been released: https://github.com/mikedilger/resolv-rs/issues/11
+# As of 2026-01-28, version 0.4 of resolv has not been released but is the only
+# version building with current versions of bindgen-cli [0]
+#
+# [0] https://github.com/mikedilger/resolv-rs/issues/11
 resolv = { version = "0.4", git = "https://github.com/mikedilger/resolv-rs.git", rev = "a0349cb", optional = true }
 thiserror = { version = "2.0.17", default-features = false }
 tracing = { version = "0.1.43", optional = true }
