@@ -45,6 +45,10 @@ pub trait SrvRecord {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an invalid scheme or path and query is provided.
     fn parse(
         &self,
         scheme: impl TryInto<Scheme, Error = impl Into<http::Error>>,
@@ -66,8 +70,8 @@ pub trait SrvRecord {
 }
 
 /// Generates a key to sort a SRV record by priority and weight per RFC 2782.
-pub(crate) fn sort_key(priority: u16, weight: u16, mut rng: impl Rng) -> (u16, Reverse<u32>) {
+pub fn sort_key(priority: u16, weight: u16, mut rng: impl Rng) -> (u16, Reverse<u32>) {
     // Sort ascending by priority, then descending (hence `Reverse`) by randomized weight
-    let rand = rng.random::<u16>() as u32;
-    (priority, Reverse(weight as u32 * rand))
+    let rand = u32::from(rng.random::<u16>());
+    (priority, Reverse(u32::from(weight) * rand))
 }

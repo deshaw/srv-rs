@@ -77,7 +77,7 @@ mod tests {
     #[tokio::test]
     async fn get_fresh_uris() -> Result<(), ResolveError> {
         let resolver = AsyncResolver::tokio_from_system_conf().await?;
-        let client = crate::SrvClient::<_>::new_with_resolver(crate::EXAMPLE_SRV, resolver);
+        let client = crate::SrvClient::<_>::new_with_resolver(&crate::EXAMPLE_SRV, resolver);
         let (uris, _) = client.get_fresh_uri_candidates().await.unwrap();
         assert_ne!(uris, Vec::<http::Uri>::new());
         Ok(())
