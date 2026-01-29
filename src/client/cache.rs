@@ -17,11 +17,13 @@ impl<T> Cache<T> {
     }
 
     /// Determines if a cache is valid.
+    #[must_use]
     pub fn valid(&self) -> bool {
         !self.items.is_empty() && Instant::now() <= self.valid_until
     }
 
     /// Gets the items stored in a cache.
+    #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
@@ -51,7 +53,10 @@ mod tests {
 
     #[test]
     fn expired_is_invalid() {
-        let cache = Cache::new(vec![()], Instant::now() - Duration::from_secs(1));
+        let cache = Cache::new(
+            vec![()],
+            Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
+        );
         assert!(!cache.valid());
     }
 

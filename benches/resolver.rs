@@ -6,7 +6,7 @@ use trust_dns_resolver::{AsyncResolver, TokioAsyncResolver};
 #[allow(clippy::missing_panics_doc)]
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
-    let libresolv = LibResolv::default();
+    let libresolv = LibResolv;
     // Disable trust-dns caching so benches are fair
     let (conf, mut opts) = trust_dns_resolver::system_conf::read_system_conf().unwrap();
     opts.cache_size = 0;

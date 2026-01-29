@@ -62,18 +62,14 @@ pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
 }
 
 /// Execution mode to use when performing an operation on SRV targets.
+#[derive(Default)]
 pub enum Execution {
     /// Operations are performed *serially* (i.e. one after the other).
+    #[default]
     Serial,
     /// Operations are performed *concurrently* (i.e. all at once).
     /// Note that this does not imply parallelism--no additional tasks are spawned.
     Concurrent,
-}
-
-impl Default for Execution {
-    fn default() -> Self {
-        Self::Serial
-    }
 }
 
 impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
@@ -84,21 +80,21 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
     /// use srv_rs::{SrvClient, resolver::libresolv::LibResolv};
     /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
     /// ```
-    pub fn new(srv_name: impl ToString) -> Self {
+    pub fn new(srv_name: &impl ToString) -> Self {
         Self::new_with_resolver(srv_name, Resolver::default())
     }
 }
 
 impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
     /// Creates a new client for communicating with services located by `srv_name`.
-    pub fn new_with_resolver(srv_name: impl ToString, resolver: Resolver) -> Self {
+    pub fn new_with_resolver(srv_name: &impl ToString, resolver: Resolver) -> Self {
         Self {
             srv: srv_name.to_string(),
             resolver,
             http_scheme: Scheme::HTTPS,
             path_prefix: String::from("/"),
-            policy: Default::default(),
-            cache: Default::default(),
+            policy: Policy::default(),
+            cache: ArcSwap::default(),
         }
     }
 }
@@ -106,6 +102,10 @@ impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
 impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// Gets a fresh set of SRV records from a client's DNS resolver, returning
     /// them along with the time they're valid until.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Lookup`] if DNS resolution fails.
     pub async fn get_srv_records(
         &self,
     ) -> Result<(Vec<Resolver::Record>, Instant), Error<Resolver::Error>> {
@@ -119,6 +119,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// their target/port pairs into URIs, which are returned along with the
     /// time they're valid until--i.e., the time a cache containing these URIs
     /// should expire.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::Lookup`] if DNS resolution fails
+    /// - [`Error::RecordParsing`] if SRV records cannot be parsed into valid URIs
     pub async fn get_fresh_uri_candidates(
         &self,
     ) -> Result<(Vec<Uri>, Instant), Error<Resolver::Error>> {
@@ -182,6 +187,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # }
     /// ```
     ///
+    /// # Errors
+    ///
+    /// - [`Error::Lookup`] if DNS resolution fails
+    /// - [`Error::RecordParsing`] if SRV records cannot be parsed into valid URIs
+    ///
     /// [`Policy`]: policy::Policy
     pub async fn execute_stream<'a, T, E, Fut>(
         &'a self,
@@ -196,7 +206,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
         let cache = self.get_valid_cache().await?;
         let order = self.policy.order(cache.items());
         let func = {
-            let cache = cache.clone();
+            let cache = Arc::clone(&cache);
             move |idx| {
                 let candidate = Policy::cache_item_to_uri(&cache.items()[idx]);
                 func(candidate.to_owned()).map(move |res| (idx, res))
@@ -258,6 +268,12 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::Lookup`] if DNS resolution fails
+    /// - [`Error::RecordParsing`] if SRV records cannot be parsed into valid URIs
+    /// - [`Error::NoTargets`] if there are no SRV targets available
     pub async fn execute<T, E, Fut>(
         &self,
         execution_mode: Execution,
@@ -278,11 +294,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
             }
         }
 
-        if let Some(err) = last_error {
-            Ok(Err(err))
-        } else {
-            Err(Error::NoTargets)
-        }
+        last_error.map_or_else(|| Err(Error::NoTargets), |err| Ok(Err(err)))
     }
 
     fn parse_record(&self, record: &Resolver::Record) -> Result<Uri, http::Error> {
@@ -292,7 +304,8 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 
 impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// Sets the SRV name of the client.
-    pub fn srv_name(self, srv_name: impl ToString) -> Self {
+    #[must_use]
+    pub fn srv_name(self, srv_name: &impl ToString) -> Self {
         Self {
             srv: srv_name.to_string(),
             ..self
@@ -303,7 +316,7 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     pub fn resolver<R>(self, resolver: R) -> SrvClient<R, Policy> {
         SrvClient {
             resolver,
-            cache: Default::default(),
+            cache: ArcSwap::default(),
             policy: self.policy,
             srv: self.srv,
             http_scheme: self.http_scheme,
@@ -323,7 +336,7 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {
             policy,
-            cache: Default::default(),
+            cache: ArcSwap::default(),
             resolver: self.resolver,
             srv: self.srv,
             http_scheme: self.http_scheme,
@@ -332,6 +345,7 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     }
 
     /// Sets the http scheme of the client.
+    #[must_use]
     pub fn http_scheme(self, http_scheme: Scheme) -> Self {
         Self {
             http_scheme,
@@ -340,7 +354,8 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     }
 
     /// Sets the path prefix of the client.
-    pub fn path_prefix(self, path_prefix: impl ToString) -> Self {
+    #[must_use]
+    pub fn path_prefix(self, path_prefix: &impl ToString) -> Self {
         Self {
             path_prefix: path_prefix.to_string(),
             ..self

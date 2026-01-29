@@ -8,9 +8,9 @@ pub use super::Cache;
 
 /// Policy for [`SrvClient`] to use when selecting SRV targets to recommend.
 #[async_trait]
-pub trait Policy: Sized {
+pub trait Policy: Sized + Send + Sync {
     /// Type of item stored in a client's cache.
-    type CacheItem;
+    type CacheItem: Send + Sync;
 
     /// Iterator of indices used to order cache items.
     type Ordering: Iterator<Item = usize>;
@@ -59,7 +59,7 @@ impl Policy for Affinity {
 
     fn order(&self, uris: &[Uri]) -> Self::Ordering {
         let preferred = self.last_working_target.load();
-        Affinity::uris_preferring(uris, preferred.as_deref())
+        Self::uris_preferring(uris, preferred.as_deref())
     }
 
     fn cache_item_to_uri(item: &Self::CacheItem) -> &Uri {
@@ -74,7 +74,6 @@ impl Policy for Affinity {
 impl Affinity {
     fn uris_preferring(uris: &[Uri], preferred: Option<&Uri>) -> AffinityUriIter {
         let preferred = preferred
-            .as_deref()
             .and_then(|preferred| uris.as_ref().iter().position(|uri| uri == preferred))
             .unwrap_or(0);
         AffinityUriIter {
@@ -209,7 +208,7 @@ fn balance_uris_iter_order() {
         .map(|(uri, &priority)| ParsedRecord {
             uri: uri.clone(),
             priority,
-            weight: rand::random::<u8>() as u16,
+            weight: u16::from(rand::random::<u8>()),
         })
         .collect::<Vec<_>>();
 
