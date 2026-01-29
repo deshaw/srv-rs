@@ -114,6 +114,7 @@ impl From<Record<resolv::record::SRV>> for LibResolvSrvRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use resolv::error::{Error as ResolvError, ResolutionError};
 
     #[tokio::test]
     async fn srv_lookup() -> Result<(), LibResolvError> {
@@ -138,24 +139,42 @@ mod tests {
         let result = LibResolv
             .get_srv_records("_http._tcp.foobar.deshaw.com")
             .await;
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(LibResolvError::Resolver(ResolvError::Resolver(
+                ResolutionError::HostNotFound
+            )))
+        );
     }
 
     #[tokio::test]
     async fn malformed_srv_name() {
         let result = LibResolv.get_srv_records("_http.foobar.deshaw.com").await;
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(LibResolvError::Resolver(ResolvError::Resolver(
+                ResolutionError::HostNotFound
+            )))
+        );
     }
 
     #[tokio::test]
     async fn very_malformed_srv_name() {
         let result = LibResolv.get_srv_records("  @#*^[_hsd flt.com").await;
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(LibResolvError::Resolver(ResolvError::Resolver(
+                ResolutionError::HostNotFound
+            )))
+        );
     }
 
     #[tokio::test]
     async fn srv_name_containing_nul_terminator() {
         let result = LibResolv.get_srv_records("_http.\0_tcp.foo.com").await;
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(LibResolvError::Resolver(ResolvError::CString(_)))
+        ));
     }
 }
