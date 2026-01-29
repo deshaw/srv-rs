@@ -20,7 +20,7 @@ jobs:
         with:
           components: rustfmt
       - run: |
-        cargo fmt --check
+          cargo fmt --check
 
   test:
     runs-on: ubuntu-latest
