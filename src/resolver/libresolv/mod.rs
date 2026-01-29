@@ -13,11 +13,17 @@ use std::{
 // This is required because:
 // - libresolv's res_state contains raw pointers, some of which are self-referential.
 // - The intended usage is to manage per-thread resolver state.
+//
 // From the man page for resolver(3):
-// > The traditional resolver interfaces such as res_init() and res_query() use some static (global) state stored in the
-// > _res structure, rendering these functions non-thread-safe.
-// > BIND 8.2 introduced a set of new interfaces res_ninit(), res_nquery(), and so on, which take a res_state as their
-// > first argument, so you can use a per-thread resolver state.
+//
+//     The traditional resolver interfaces such as res_init() and res_query()
+//     use some static (global) state stored in the _res structure, rendering
+//     these functions non-thread-safe.
+//
+//     BIND 8.2 introduced a set of new interfaces res_ninit(), res_nquery(),
+//     and so on, which take a res_state as their first argument, so you can use
+//     a per-thread resolver state.
+//
 thread_local!(static RESOLVER: RefCell<Resolver> =
     RefCell::new(Resolver::new().expect("unable to initialize libresolv state"))
 );
