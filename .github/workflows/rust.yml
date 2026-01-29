@@ -5,7 +5,7 @@ on:
     branches:
       - master
   pull_request:
-    branches: 
+    branches:
       - master
   workflow_dispatch:
 
@@ -41,3 +41,41 @@ jobs:
             --all-features \
             --all-targets \
             --verbose
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Environment
+        run: |
+          cargo install bindgen-cli
+      - name: Clippy
+        run: |
+          cargo clippy \
+            --workspace \
+            --all-features \
+            --all-targets \
+            -- \
+            --deny clippy::all \
+            --deny clippy::pedantic \
+            --deny clippy::nursery
+
+  documentation:
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Environment
+        run: |
+          cargo install bindgen-cli
+      - name: Documentation
+        run: |
+          cargo doc \
+            --workspace \
+            --all-features \
+            --no-deps
