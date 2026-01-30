@@ -60,7 +60,6 @@ used successfully. Both of these behaviors can be changed by implementing the
 The provided resolver backends are enabled by the following features:
 
 - `libresolv` (via [`LibResolv`])
-- `trust-dns` (via [`trust_dns_resolver::AsyncResolver`])
 
 [`SrvResolver`]: resolver::SrvResolver
 [`Policy`]: policy::Policy
