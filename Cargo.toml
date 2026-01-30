@@ -45,7 +45,7 @@ srv-rs = { path = ".", features = ["libresolv", "hickory"] }
 criterion = "0.8.1"
 futures = "0.3"
 hyper = "0.13"
-tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
+tokio = { version = "1.49", features = ["rt-multi-thread", "macros"] }
 tempfile = "3.24.0"
 owo-colors = "4.2.3"
 hickory-proto = "0.25"
