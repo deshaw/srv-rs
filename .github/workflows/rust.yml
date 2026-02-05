@@ -79,3 +79,11 @@ jobs:
             --workspace \
             --all-features \
             --no-deps
+
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          cargo install cargo-readme
+          diff README.md <(cargo readme)
