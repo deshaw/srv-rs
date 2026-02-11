@@ -41,6 +41,13 @@ jobs:
             --all-features \
             --all-targets \
             --verbose
+          # Cargo doesn't run doc tests with --all-targets
+          # https://github.com/rust-lang/cargo/issues/6669
+          cargo test \
+            --workspace \
+            --all-features \
+            --doc \
+            --verbose
 
   lint:
     runs-on: ubuntu-latest
