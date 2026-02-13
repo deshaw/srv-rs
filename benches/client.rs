@@ -9,8 +9,8 @@ const SRV_DESCRIPTION: &str = SRV_NAME;
 #[allow(clippy::missing_panics_doc)]
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
-    let client = SrvClient::<LibResolv>::new(&SRV_NAME);
-    let rfc2782_client = SrvClient::<LibResolv>::new(&SRV_NAME).policy(Rfc2782);
+    let client = SrvClient::<LibResolv>::new(SRV_NAME);
+    let rfc2782_client = SrvClient::<LibResolv>::new(SRV_NAME).policy(Rfc2782);
 
     let succeed = || Ok::<_, std::convert::Infallible>(());
     let fail = || "".parse::<usize>();

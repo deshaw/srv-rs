@@ -78,18 +78,18 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
     /// # Examples
     /// ```
     /// use srv_rs::{SrvClient, resolver::libresolv::LibResolv};
-    /// let client = SrvClient::<LibResolv>::new(&"_http._tcp.example.com");
+    /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
     /// ```
-    pub fn new(srv_name: &impl ToString) -> Self {
+    pub fn new(srv_name: impl Into<String>) -> Self {
         Self::new_with_resolver(srv_name, Resolver::default())
     }
 }
 
 impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
     /// Creates a new client for communicating with services located by `srv_name`.
-    pub fn new_with_resolver(srv_name: &impl ToString, resolver: Resolver) -> Self {
+    pub fn new_with_resolver(srv_name: impl Into<String>, resolver: Resolver) -> Self {
         Self {
-            srv: srv_name.to_string(),
+            srv: srv_name.into(),
             resolver,
             http_scheme: Scheme::HTTPS,
             path_prefix: String::from("/"),
@@ -172,7 +172,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Error<LibResolvError>> {
-    /// # let client = SrvClient::<LibResolv>::new(&EXAMPLE_SRV);
+    /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     /// let results_stream = client.execute_stream(Execution::Serial, |address| async move {
     ///     Ok::<_, std::convert::Infallible>(address.to_string())
     /// })
@@ -252,7 +252,7 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Error<LibResolvError>> {
-    /// let client = SrvClient::<LibResolv>::new(&EXAMPLE_SRV);
+    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
     ///
     /// let res = client.execute(Execution::Serial, |address| async move {
     ///     Ok::<_, std::convert::Infallible>(address.to_string())
@@ -305,9 +305,9 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
 impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// Sets the SRV name of the client.
     #[must_use]
-    pub fn srv_name(self, srv_name: &impl ToString) -> Self {
+    pub fn srv_name(self, srv_name: impl Into<String>) -> Self {
         Self {
-            srv: srv_name.to_string(),
+            srv: srv_name.into(),
             ..self
         }
     }
@@ -331,7 +331,7 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
     /// use srv_rs::{SrvClient, policy::Rfc2782, resolver::libresolv::LibResolv};
-    /// let client = SrvClient::<LibResolv>::new(&EXAMPLE_SRV).policy(Rfc2782);
+    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
     /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {
@@ -355,9 +355,9 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
 
     /// Sets the path prefix of the client.
     #[must_use]
-    pub fn path_prefix(self, path_prefix: &impl ToString) -> Self {
+    pub fn path_prefix(self, path_prefix: impl Into<String>) -> Self {
         Self {
-            path_prefix: path_prefix.to_string(),
+            path_prefix: path_prefix.into(),
             ..self
         }
     }
