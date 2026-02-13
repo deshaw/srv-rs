@@ -36,18 +36,25 @@ jobs:
           cargo install bindgen-cli
       - name: Run tests
         run: |
+          # It is not possible to run all the tests in a single
+          # `cargo test` invocation. Specifically, `--all-targets`
+          # does not cover doc tests [1].
+          #
+          # [1]: https://github.com/rust-lang/cargo/issues/6669
+
+          # Run all non-doc tests.
           cargo test \
             --workspace \
             --all-features \
-            --all-targets \
-            --verbose
-          # Cargo doesn't run doc tests with --all-targets
-          # https://github.com/rust-lang/cargo/issues/6669
+            --verbose \
+            --all-targets
+
+          # Run all doc tests.
           cargo test \
             --workspace \
             --all-features \
-            --doc \
-            --verbose
+            --verbose \
+            --doc
 
   lint:
     runs-on: ubuntu-latest
