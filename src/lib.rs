@@ -33,7 +33,7 @@ It presents this service in the following interface:
 # #[tokio::main]
 # async fn main() {
 use srv_rs::{SrvClient, Execution, resolver::libresolv::LibResolv};
-let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
+let client = SrvClient::<LibResolv>::new(&"_http._tcp.example.com");
 client.execute(Execution::Serial, |address: http::Uri| async move {
     // Communicate with the service at `address`
     // `hyper` is used here as an example, but it is in no way required
