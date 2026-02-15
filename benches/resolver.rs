@@ -4,7 +4,7 @@ use srv_rs::resolver::{libresolv::LibResolv, SrvResolver};
 /// Benchmark the performance of the resolver.
 #[allow(clippy::missing_panics_doc)]
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
     let libresolv = LibResolv;
 
     let mut group = c.benchmark_group(format!("resolve {}", srv_rs::EXAMPLE_SRV));
