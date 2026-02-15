@@ -1,5 +1,3 @@
-//! Minimal mock DNS server for testing SRV record resolution.
-
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::Command;
@@ -15,51 +13,62 @@ use hickory_proto::{
     serialize::binary::{BinDecodable, BinEncodable},
 };
 
-use crate::harness::MockSrv;
-
-/// A minimal DNS server that responds to SRV queries.
-pub struct DnsServer {
+/// A minimal mock DNS server that responds to SRV queries.
+pub struct MockDns {
     records: Vec<MockSrv>,
-    socket: UdpSocket,
-    shutdown_handle: ShutdownHandle,
 }
 
-impl DnsServer {
+impl MockDns {
+    /// Address to bind the DNS server to.
+    pub const BIND_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 53);
+
+    /// Files needed for sandboxed DNS resolution via loopback.
+    pub const fn config_files() -> &'static [(&'static str, &'static [u8])] {
+        &[
+            ("/etc/resolv.conf", b"nameserver 127.0.0.1\n"),
+            ("/etc/hosts", b"127.0.0.1 localhost\n"),
+            ("/etc/nsswitch.conf", b"hosts: files dns\n"),
+        ]
+    }
+
+    /// Create a DNS server with the given SRV records.
+    pub fn new(records: &[MockSrv]) -> Self {
+        Self {
+            records: records.to_vec(),
+        }
+    }
+
     /// Start the server in a background thread.
-    pub fn spawn(srv_records: &[MockSrv]) -> io::Result<DnsServerHandle> {
+    /// Brings up the loopback interface, binds to [`Self::BIND_ADDR`], and spawns a
+    /// thread that answers SRV queries with the configured records.
+    pub fn spawn(&self) -> io::Result<DnsServerHandle> {
         let output = Command::new("ip")
             .args(["link", "set", "lo", "up"])
             .output()?;
-
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             panic!("failed to bring up loopback interface: {}", stderr);
         }
 
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 53);
-        let socket = UdpSocket::bind(addr)?;
+        let socket = UdpSocket::bind(Self::BIND_ADDR)?;
         socket.set_read_timeout(Some(Duration::from_millis(1000)))?;
-        let shutdown_handle = ShutdownHandle(Arc::new(AtomicBool::new(false)));
-        let this = Self {
-            records: srv_records.to_vec(),
-            socket,
-            shutdown_handle: shutdown_handle.clone(),
-        };
-        let join_handle = std::thread::spawn(move || this.run());
-        println!("mock DNS server started on {addr}");
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let shutdown_clone = Arc::clone(&shutdown);
+        let records = self.records.clone();
+        let join_handle = std::thread::spawn(move || Self::run(&records, &socket, &shutdown_clone));
 
         Ok(DnsServerHandle {
-            shutdown_handle,
+            shutdown,
             join_handle: Some(join_handle),
         })
     }
 
-    /// Run the server, blocking the current thread.
+    /// Run the server loop, blocking the current thread.
     /// Returns when shutdown is triggered or an unrecoverable error occurs.
-    pub fn run(&self) -> io::Result<()> {
+    fn run(records: &[MockSrv], socket: &UdpSocket, shutdown: &AtomicBool) -> io::Result<()> {
         let mut buf = [0u8; 512];
-        while !self.shutdown_handle.is_shutdown() {
-            let (len, src) = match self.socket.recv_from(&mut buf) {
+        while !shutdown.load(Ordering::Relaxed) {
+            let (len, src) = match socket.recv_from(&mut buf) {
                 Ok(result) => result,
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
                 Err(e) if e.kind() == io::ErrorKind::TimedOut => continue,
@@ -67,15 +76,15 @@ impl DnsServer {
                 Err(e) => return Err(e),
             };
 
-            if let Ok(response) = self.handle_query(&buf[..len]) {
-                let _ = self.socket.send_to(&response, src);
+            if let Ok(response) = Self::handle_query(records, &buf[..len]) {
+                let _ = socket.send_to(&response, src);
             }
         }
 
         Ok(())
     }
 
-    fn handle_query(&self, query_bytes: &[u8]) -> Result<Vec<u8>, ()> {
+    fn handle_query(records: &[MockSrv], query_bytes: &[u8]) -> Result<Vec<u8>, ()> {
         let query = Message::from_bytes(query_bytes).map_err(|_| ())?;
         assert!(
             query
@@ -96,8 +105,7 @@ impl DnsServer {
         for question in query.queries() {
             response.add_query(question.clone());
             let qname = Self::normalize_name(&question.name().to_string());
-            let answers = self
-                .records
+            let answers = records
                 .iter()
                 .filter(|srv| Self::normalize_name(srv.name) == qname)
                 .filter_map(|srv| Self::create_srv_record(srv, question.name().clone()).ok());
@@ -124,33 +132,55 @@ impl DnsServer {
     }
 }
 
+/// Static SRV record definition for use in test configurations.
+#[derive(Clone, Debug)]
+pub struct MockSrv {
+    /// The SRV name (e.g., `_http._tcp.example.com`)
+    pub name: &'static str,
+    /// Priority value
+    pub priority: u16,
+    /// Weight value
+    pub weight: u16,
+    /// Port number
+    pub port: u16,
+    /// Target hostname
+    pub target: &'static str,
+    /// TTL in seconds
+    pub ttl: u32,
+}
+
+impl MockSrv {
+    /// Create a new SRV record.
+    pub const fn new(
+        name: &'static str,
+        priority: u16,
+        weight: u16,
+        port: u16,
+        target: &'static str,
+        ttl: u32,
+    ) -> Self {
+        Self {
+            name,
+            priority,
+            weight,
+            port,
+            target,
+            ttl,
+        }
+    }
+}
+
 /// Handle for the mock DNS server that shuts it down when dropped.
 pub struct DnsServerHandle {
-    shutdown_handle: ShutdownHandle,
+    shutdown: Arc<AtomicBool>,
     join_handle: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 impl Drop for DnsServerHandle {
     fn drop(&mut self) {
-        self.shutdown_handle.shutdown();
+        self.shutdown.store(true, Ordering::Relaxed);
         if let Some(handle) = self.join_handle.take() {
             let _ = handle.join();
         }
-    }
-}
-
-/// Handle for shutting down a running mock DNS server.
-#[derive(Clone)]
-pub struct ShutdownHandle(Arc<AtomicBool>);
-
-impl ShutdownHandle {
-    /// Signal the server to shut down.
-    pub fn shutdown(&self) {
-        self.0.store(true, Ordering::Relaxed);
-    }
-
-    /// Returns `true` if a shutdown has been requested.
-    fn is_shutdown(&self) -> bool {
-        self.0.load(Ordering::Relaxed)
     }
 }
