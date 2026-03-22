@@ -1,5 +1,6 @@
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -13,9 +14,47 @@ use hickory_proto::{
     serialize::binary::{BinDecodable, BinEncodable},
 };
 
+use crate::sandbox::components::{Capability, SandboxComponent, SandboxRequirement};
+
 /// A minimal mock DNS server that responds to SRV queries.
 pub struct MockDns {
     records: Vec<MockSrv>,
+}
+
+impl SandboxComponent for MockDns {
+    fn configure_sandbox(&self, tempdir: &Path) -> Vec<SandboxRequirement> {
+        let mut reqs = vec![
+            // Required to bring up the loopback interface.
+            SandboxRequirement::Capability(Capability::NetAdmin),
+            // Required to bind a socket to port 53.
+            SandboxRequirement::Capability(Capability::NetBindService),
+        ];
+        for &(desired_path, contents) in Self::config_files() {
+            let host_path = tempdir.join(Path::new(desired_path).file_name().unwrap());
+            std::fs::write(&host_path, contents).expect("failed to write mock file to tempdir");
+            reqs.push(SandboxRequirement::BindMountReadOnly {
+                host_path,
+                desired_path: PathBuf::from(desired_path),
+            });
+        }
+        reqs
+    }
+
+    /// Start the DNS server and return a handle to it.
+    fn start(&self) -> Box<dyn std::any::Any> {
+        // Validate that required configuration files were mounted correctly.
+        for &(desired_path, contents) in Self::config_files() {
+            let actual = std::fs::read(desired_path)
+                .unwrap_or_else(|e| panic!("failed to read mock file {}: {}", desired_path, e));
+            assert_eq!(
+                actual, contents,
+                "mock file {desired_path} contents mismatch",
+            );
+        }
+
+        // Start the DNS server.
+        Box::new(self.spawn().expect("failed to start mock DNS server"))
+    }
 }
 
 impl MockDns {

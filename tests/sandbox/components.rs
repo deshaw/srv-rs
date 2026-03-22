@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 /// Minimal mock DNS server for testing SRV record resolution.
 pub mod dns;
-use dns::MockDns;
 
 /// Extend the sandbox environment with optional components (e.g., DNS, naming, certificate authorities, etc.)
 pub trait SandboxComponent {
@@ -14,42 +13,6 @@ pub trait SandboxComponent {
 
     /// Start the component inside the sandbox and return a handle to it.
     fn start(&self) -> Box<dyn std::any::Any>;
-}
-
-impl SandboxComponent for MockDns {
-    fn configure_sandbox(&self, tempdir: &Path) -> Vec<SandboxRequirement> {
-        let mut reqs = vec![
-            // Required to bring up the loopback interface.
-            SandboxRequirement::Capability(Capability::NetAdmin),
-            // Required to bind a socket to port 53.
-            SandboxRequirement::Capability(Capability::NetBindService),
-        ];
-        for &(desired_path, contents) in Self::config_files() {
-            let host_path = tempdir.join(Path::new(desired_path).file_name().unwrap());
-            std::fs::write(&host_path, contents).expect("failed to write mock file to tempdir");
-            reqs.push(SandboxRequirement::BindMountReadOnly {
-                host_path,
-                desired_path: PathBuf::from(desired_path),
-            });
-        }
-        reqs
-    }
-
-    /// Start the DNS server and return a handle to it.
-    fn start(&self) -> Box<dyn std::any::Any> {
-        // Validate that required configuration files were mounted correctly.
-        for &(desired_path, contents) in Self::config_files() {
-            let actual = std::fs::read(desired_path)
-                .unwrap_or_else(|e| panic!("failed to read mock file {}: {}", desired_path, e));
-            assert_eq!(
-                actual, contents,
-                "mock file {desired_path} contents mismatch",
-            );
-        }
-
-        // Start the DNS server.
-        Box::new(self.spawn().expect("failed to start mock DNS server"))
-    }
 }
 
 /// Requirements that a component may need to run correctly inside the sandbox.
