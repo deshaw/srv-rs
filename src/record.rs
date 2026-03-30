@@ -27,13 +27,14 @@ pub trait SrvRecord {
     ///
     /// ```
     /// # fn srv_record_parse() -> Result<(), http::Error> {
-    /// use srv_rs::{resolver::libresolv::LibResolvSrvRecord, SrvRecord};
-    /// let record = LibResolvSrvRecord {
-    ///     priority: 1,
-    ///     weight: 100,
-    ///     port: 8211,
-    ///     target: String::from("srv-client-rust.deshaw.org"),
-    /// };
+    /// use hickory_resolver::{proto::rr::rdata::SRV, Name};
+    /// use srv_rs::SrvRecord;
+    /// let record = SRV::new(
+    ///     1,    // priority
+    ///     100,  // weight
+    ///     8211, // port
+    ///     Name::from_ascii("srv-client-rust.deshaw.org").unwrap(),
+    /// );
     /// assert_eq!(
     ///     &record.parse("https", "/")?.to_string(),
     ///     "https://srv-client-rust.deshaw.org:8211/"

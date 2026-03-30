@@ -31,12 +31,15 @@ selection of targets to use for communication with SRV-located services.
 It presents this service in the following interface:
 
 ```rust
-use srv_rs::{SrvClient, Execution, resolver::libresolv::LibResolv};
-let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
+use srv_rs::{SrvClient, Execution};
+use hickory_resolver::Resolver;
+
+let resolver = Resolver::builder_tokio().unwrap().build();
+let client: SrvClient<_> = SrvClient::new_with_resolver("_http._tcp.example.com", resolver);
 client.execute(Execution::Serial, |address: http::Uri| async move {
-    // Communicate with the service at `address`
-    // `hyper` is used here as an example, but it is in no way required
-    hyper::Client::new().get(address).await
+    // Use a client like reqwest or hyper here to communicate with the service at `address`
+    // For example: hyper::Client::new().get(address).await;
+    Ok::<_, std::io::Error>(())
 })
 .await;
 ```
@@ -63,16 +66,17 @@ The provided resolver backends are enabled by the following features:
 [`SrvResolver`]: resolver::SrvResolver
 [`Policy`]: policy::Policy
 [`LibResolv`]: resolver::libresolv::LibResolv
+[`Resolver`]: hickory_resolver::Resolver
 
 ## Usage
 
 Add srv-rs to your dependencies in `Cargo.toml`, enabling at least one of
 the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-resolvers-and-target-selection-policies)).
-`libresolv` is enabled here as an example, but it is not required.
+`hickory` is enabled here as an example, but it is not required.
 
 ```toml
 [dependencies]
-srv-rs = { version = "0.2.0", features = ["libresolv"] }
+srv-rs = { version = "0.2.0", features = ["hickory"] }
 ```
 
 ## Contributing

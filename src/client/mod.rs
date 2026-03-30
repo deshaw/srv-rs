@@ -73,11 +73,12 @@ pub enum Execution {
 }
 
 impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
-    /// Creates a new client for communicating with services located by `srv_name`.
+    /// Creates a new client for communicating with services located by `srv_name`,
+    /// using a default-constructed resolver.
     ///
     /// # Examples
     /// ```
-    /// use srv_rs::{SrvClient, resolver::libresolv::LibResolv};
+    /// use srv_rs::{resolver::libresolv::LibResolv, SrvClient};
     /// let client = SrvClient::<LibResolv>::new("_http._tcp.example.com");
     /// ```
     pub fn new(srv_name: impl Into<String>) -> Self {
@@ -87,6 +88,14 @@ impl<Resolver: Default, Policy: policy::Policy + Default> SrvClient<Resolver, Po
 
 impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
     /// Creates a new client for communicating with services located by `srv_name`.
+    ///
+    /// # Examples
+    /// ```
+    /// use hickory_resolver::Resolver;
+    /// use srv_rs::SrvClient;
+    /// let resolver = Resolver::builder_tokio().unwrap().build();
+    /// let client: SrvClient<_> = SrvClient::new_with_resolver("_http._tcp.example.com", resolver);
+    /// ```
     pub fn new_with_resolver(srv_name: impl Into<String>, resolver: Resolver) -> Self {
         Self {
             srv: srv_name.into(),
@@ -168,11 +177,11 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
     /// use srv_rs::{SrvClient, Error, Execution};
-    /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    /// use hickory_resolver::{Resolver, ResolveError};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error<LibResolvError>> {
-    /// # let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
+    /// # async fn main() -> Result<(), Error<ResolveError>> {
+    /// # let client: SrvClient<_> = SrvClient::new_with_resolver(EXAMPLE_SRV, Resolver::builder_tokio().unwrap().build());
     /// let results_stream = client.execute_stream(Execution::Serial, |address| async move {
     ///     Ok::<_, std::convert::Infallible>(address.to_string())
     /// })
@@ -247,23 +256,26 @@ impl<Resolver: SrvResolver, Policy: policy::Policy> SrvClient<Resolver, Policy> 
     ///
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
-    /// use srv_rs::{SrvClient, Error, Execution};
-    /// use srv_rs::resolver::libresolv::{LibResolv, LibResolvError};
+    /// use hickory_resolver::{ResolveError, Resolver};
+    /// use srv_rs::{Error, Execution, SrvClient};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error<LibResolvError>> {
-    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV);
+    /// # async fn main() -> Result<(), Error<ResolveError>> {
+    /// let resolver = Resolver::builder_tokio().unwrap().build();
+    /// let client: SrvClient<_> = SrvClient::new_with_resolver(EXAMPLE_SRV, resolver);
     ///
-    /// let res = client.execute(Execution::Serial, |address| async move {
-    ///     Ok::<_, std::convert::Infallible>(address.to_string())
-    /// })
-    /// .await?;
+    /// let res = client
+    ///     .execute(Execution::Serial, |address| async move {
+    ///         Ok::<_, std::convert::Infallible>(address.to_string())
+    ///     })
+    ///     .await?;
     /// assert!(res.is_ok());
     ///
-    /// let res = client.execute(Execution::Concurrent, |address| async move {
-    ///     address.to_string().parse::<usize>()
-    /// })
-    /// .await?;
+    /// let res = client
+    ///     .execute(Execution::Concurrent, |address| async move {
+    ///         address.to_string().parse::<usize>()
+    ///     })
+    ///     .await?;
     /// assert!(res.is_err());
     /// # Ok(())
     /// # }
@@ -330,8 +342,11 @@ impl<Resolver, Policy: policy::Policy> SrvClient<Resolver, Policy> {
     ///
     /// ```
     /// # use srv_rs::EXAMPLE_SRV;
-    /// use srv_rs::{SrvClient, policy::Rfc2782, resolver::libresolv::LibResolv};
-    /// let client = SrvClient::<LibResolv>::new(EXAMPLE_SRV).policy(Rfc2782);
+    /// use hickory_resolver::Resolver;
+    /// use srv_rs::{policy::Rfc2782, SrvClient};
+    /// let client =
+    ///     SrvClient::<_>::new_with_resolver(EXAMPLE_SRV, Resolver::builder_tokio().unwrap().build())
+    ///         .policy(Rfc2782);
     /// ```
     pub fn policy<P: policy::Policy>(self, policy: P) -> SrvClient<Resolver, P> {
         SrvClient {

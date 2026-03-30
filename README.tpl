@@ -9,11 +9,11 @@
 
 Add {{crate}} to your dependencies in `Cargo.toml`, enabling at least one of
 the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-resolvers-and-target-selection-policies)).
-`libresolv` is enabled here as an example, but it is not required.
+`hickory` is enabled here as an example, but it is not required.
 
 ```toml
 [dependencies]
-{{crate}} = { version = "{{version}}", features = ["libresolv"] }
+{{crate}} = { version = "{{version}}", features = ["hickory"] }
 ```
 
 ## Contributing
