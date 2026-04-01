@@ -72,7 +72,7 @@ The provided resolver backends are enabled by the following features:
 */
 
 mod client;
-pub use client::{policy, Error, Execution, SrvClient};
+pub use client::{Error, Execution, SrvClient, policy};
 
 mod record;
 pub use record::SrvRecord;

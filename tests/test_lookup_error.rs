@@ -2,9 +2,9 @@
 
 mod sandbox;
 
-use sandbox::components::dns::MockDns;
 use sandbox::Sandbox;
-use srv_rs::resolver::{libresolv::LibResolv, SrvResolver};
+use sandbox::components::dns::MockDns;
+use srv_rs::resolver::{SrvResolver, libresolv::LibResolv};
 
 #[test]
 fn lookup_nonexistent_host() {

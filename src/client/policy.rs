@@ -1,4 +1,4 @@
-use crate::{resolver::SrvResolver, Error, SrvClient, SrvRecord};
+use crate::{Error, SrvClient, SrvRecord, resolver::SrvResolver};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use http::Uri;
@@ -109,11 +109,7 @@ impl Iterator for AffinityUriIter {
             Some(next) => (next, next + 1),
         };
         self.next = Some(next);
-        if idx < self.n {
-            Some(idx)
-        } else {
-            None
-        }
+        if idx < self.n { Some(idx) } else { None }
     }
 }
 

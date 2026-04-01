@@ -2,10 +2,10 @@
 
 mod sandbox;
 
-use sandbox::components::dns::{MockDns, MockSrv};
 use sandbox::Sandbox;
-use srv_rs::resolver::{libresolv::LibResolv, SrvResolver};
+use sandbox::components::dns::{MockDns, MockSrv};
 use srv_rs::SrvRecord;
+use srv_rs::resolver::{SrvResolver, libresolv::LibResolv};
 
 #[test]
 fn simple_lookup_srv_multiple() {

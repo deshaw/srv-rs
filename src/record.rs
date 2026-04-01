@@ -2,7 +2,7 @@
 
 use http::uri::{PathAndQuery, Scheme, Uri};
 use rand::Rng;
-use std::{cmp::Reverse, convert::TryInto, fmt::Display};
+use std::{cmp::Reverse, fmt::Display};
 
 /// Representation of types that contain the fields of a SRV record.
 pub trait SrvRecord {
