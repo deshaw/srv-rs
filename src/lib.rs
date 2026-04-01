@@ -49,9 +49,9 @@ client.execute(Execution::Serial, |address: http::Uri| async move {
 [`SrvClient::new`] creates a client (that should be reused to take advantage of
 caching) for communicating with the service located by `_http._tcp.example.com`.
 [`SrvClient::execute`] takes in a future-producing closure (emulating async
-closures, which are currently unstable) and executes the closure on a series of
-targets parsed from the discovered SRV records, stopping and returning the
-first `Ok` or last `Err` it obtains.
+closures) and executes the closure on a series of targets parsed from the
+discovered SRV records, stopping and returning the first `Ok` or last `Err`
+it obtains.
 
 # Alternative Resolvers and Target Selection Policies
 

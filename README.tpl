@@ -1,6 +1,6 @@
 # {{crate}}
 
-[![Test Status](https://github.com/deshaw/{{crate}}/workflows/Rust/badge.svg?event=push)](https://github.com/deshaw/{{crate}}/actions)
+[![Test Status](https://github.com/deshaw/{{crate}}/actions/workflows/rust.yml/badge.svg)](https://github.com/deshaw/{{crate}}/actions/workflows/rust.yml)
 [![Crate](https://img.shields.io/crates/v/{{crate}}.svg)](https://crates.io/crates/{{crate}})
 
 {{readme}}
