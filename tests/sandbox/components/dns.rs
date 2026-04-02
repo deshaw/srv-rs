@@ -3,14 +3,14 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 use std::time::Duration;
 
 use hickory_proto::{
     op::{Message, MessageType, OpCode, ResponseCode},
-    rr::{rdata::SRV, Name, RData, Record, RecordType},
+    rr::{Name, RData, Record, RecordType, rdata::SRV},
     serialize::binary::{BinDecodable, BinEncodable},
 };
 
@@ -45,7 +45,7 @@ impl SandboxComponent for MockDns {
         // Validate that required configuration files were mounted correctly.
         for &(desired_path, contents) in Self::config_files() {
             let actual = std::fs::read(desired_path)
-                .unwrap_or_else(|e| panic!("failed to read mock file {}: {}", desired_path, e));
+                .unwrap_or_else(|e| panic!("failed to read mock file {desired_path}: {e}"));
             assert_eq!(
                 actual, contents,
                 "mock file {desired_path} contents mismatch",
@@ -86,7 +86,7 @@ impl MockDns {
             .output()?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            panic!("failed to bring up loopback interface: {}", stderr);
+            panic!("failed to bring up loopback interface: {stderr}");
         }
 
         let socket = UdpSocket::bind(Self::BIND_ADDR)?;

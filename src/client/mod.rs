@@ -1,14 +1,13 @@
 //! Clients based on SRV lookups.
 
-use crate::{resolver::SrvResolver, SrvRecord};
+use crate::{SrvRecord, resolver::SrvResolver};
 use arc_swap::ArcSwap;
 use futures_util::{
-    pin_mut,
+    FutureExt, pin_mut,
     stream::{self, Stream, StreamExt},
-    FutureExt,
 };
 use http::uri::{Scheme, Uri};
-use std::{fmt::Debug, future::Future, iter::FromIterator, sync::Arc, time::Instant};
+use std::{fmt::Debug, future::Future, sync::Arc, time::Instant};
 
 mod cache;
 pub use cache::Cache;

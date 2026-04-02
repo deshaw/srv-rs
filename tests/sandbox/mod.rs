@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use std::{
-    io::{stderr, stdout, Write},
+    io::{Write, stderr, stdout},
     process::Command,
 };
 

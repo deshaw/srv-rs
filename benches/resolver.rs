@@ -1,6 +1,6 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hickory_resolver::{Resolver, TokioResolver};
-use srv_rs::resolver::{libresolv::LibResolv, SrvResolver};
+use srv_rs::resolver::{SrvResolver, libresolv::LibResolv};
 
 /// Benchmark the performance of the resolver.
 #[allow(clippy::missing_panics_doc)]
