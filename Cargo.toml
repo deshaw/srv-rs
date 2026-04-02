@@ -1,7 +1,10 @@
 [package]
 name = "srv-rs"
-version = "0.2.0"
-authors = ["Max Heller <max.a.heller@gmail.com>"]
+version = "1.0.0"
+authors = [
+    "The D. E. Shaw Group <opensource@deshaw.com>",
+    "Max Heller <max.a.heller@gmail.com>",
+]
 edition = "2024"
 rust-version = "1.85"
 description = "Rust client for communicating with SRV-located services"
@@ -11,8 +14,6 @@ repository = "https://github.com/deshaw/srv-rs"
 license = "BSD-3-Clause"
 keywords = ["srv", "record", "dns", "resolve", "hickory"]
 categories = ["network-programming"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.docs.rs]
 all-features = true
