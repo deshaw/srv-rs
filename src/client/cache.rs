@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// A cache of items valid for a limited period of time.
 pub struct Cache<T> {
     valid_until: Instant,

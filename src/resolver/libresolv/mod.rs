@@ -40,7 +40,7 @@ pub enum LibResolvError {
 }
 
 /// SRV Resolver backed by `libresolv`.
-#[derive(Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LibResolv;
 
 #[async_trait]
@@ -68,7 +68,7 @@ impl SrvResolver for LibResolv {
 }
 
 /// Representation of SRV records used by [`LibResolv`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LibResolvSrvRecord {
     /// Records's target.
     pub target: String,
