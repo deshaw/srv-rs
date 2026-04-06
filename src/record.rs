@@ -71,6 +71,7 @@ pub trait SrvRecord {
 }
 
 /// Generates a key to sort a SRV record by priority and weight per RFC 2782.
+/// This is an approximation of the RFC's weighted selection algorithm.
 pub fn sort_key(priority: u16, weight: u16, mut rng: impl Rng) -> (u16, Reverse<u32>) {
     // Sort ascending by priority, then descending (hence `Reverse`) by randomized weight
     let rand = u32::from(rng.random::<u16>());
