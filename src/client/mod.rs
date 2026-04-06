@@ -20,7 +20,7 @@ pub mod policy;
 pub enum Error<Lookup: Debug> {
     /// SRV lookup errors
     #[error("SRV lookup error")]
-    Lookup(Lookup),
+    Lookup(#[source] Lookup),
     /// SRV record parsing errors
     #[error("building uri from SRV record: {0}")]
     RecordParsing(#[from] http::Error),
