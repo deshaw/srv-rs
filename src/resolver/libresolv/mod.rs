@@ -40,6 +40,10 @@ pub enum LibResolvError {
 }
 
 /// SRV Resolver backed by `libresolv`.
+///
+/// # Panics
+///
+/// Panics on first use if the per-thread resolver cannot be initialized.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LibResolv;
 
