@@ -5,6 +5,7 @@ mod sandbox;
 use sandbox::Sandbox;
 use sandbox::components::dns::{MockDns, MockSrv};
 use srv_rs::SrvRecord;
+use srv_rs::resolver::manual::{StaticResolver, StaticSrvRecord};
 use srv_rs::resolver::{SrvResolver, libresolv::LibResolv};
 
 #[test]
@@ -23,6 +24,13 @@ fn simple_lookup_srv_single() {
             test_simple_lookup_srv_single(
                 hickory_resolver::Resolver::builder_tokio().unwrap().build(),
             )
+            .await;
+            test_simple_lookup_srv_single(StaticResolver::new([StaticSrvRecord {
+                target: "server1.test.local.".into(),
+                port: 8080,
+                priority: 10,
+                weight: 100,
+            }]))
             .await;
         });
 }
