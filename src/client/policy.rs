@@ -39,7 +39,7 @@ pub trait Policy: Sized + Send + Sync {
 
 /// Policy that selects targets based on past successes--if a target was used
 /// successfully in a past execution, it will be recommended first.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Affinity {
     last_working_target: ArcSwapOption<Uri>,
 }
@@ -85,6 +85,7 @@ impl Affinity {
 }
 
 /// Iterator over [`Uri`]s based on affinity. See [`Affinity`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AffinityUriIter {
     /// Number of uris in the cache.e
     n: usize,
@@ -115,10 +116,11 @@ impl Iterator for AffinityUriIter {
 
 /// Policy that selects targets based on the algorithm in RFC 2782, reshuffling
 /// by weight for each selection.
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rfc2782;
 
 /// Representation of a SRV record with its target and port parsed into a [`Uri`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ParsedRecord {
     uri: Uri,
     priority: u16,

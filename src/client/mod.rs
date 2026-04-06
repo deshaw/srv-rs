@@ -61,7 +61,7 @@ pub struct SrvClient<Resolver, Policy: policy::Policy = policy::Affinity> {
 }
 
 /// Execution mode to use when performing an operation on SRV targets.
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Execution {
     /// Operations are performed *serially* (i.e. one after the other).
     #[default]
