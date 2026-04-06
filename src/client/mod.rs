@@ -1,6 +1,9 @@
 //! Clients based on SRV lookups.
 
-use crate::{SrvRecord, resolver::SrvResolver};
+use crate::{
+    SrvRecord,
+    resolver::{SrvResolver, manual::StaticResolver},
+};
 use arc_swap::ArcSwap;
 use futures_util::{
     FutureExt, pin_mut,
@@ -104,6 +107,33 @@ impl<Resolver, Policy: policy::Policy + Default> SrvClient<Resolver, Policy> {
             policy: Policy::default(),
             cache: ArcSwap::default(),
         }
+    }
+}
+
+impl<Policy: policy::Policy + Default> SrvClient<StaticResolver, Policy> {
+    /// Creates a new client using a [`StaticResolver`], bypassing SRV DNS resolution.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use srv_rs::{Execution, SrvClient};
+    /// use srv_rs::resolver::manual::StaticResolver;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let resolver = StaticResolver::new_from_single_target("server1.example.com", 8080_u16);
+    /// let client: SrvClient<_> = SrvClient::new_with_static_resolver(resolver);
+    /// client.execute(Execution::Serial, |address| async move {
+    ///     assert_eq!(address.to_string(), "https://server1.example.com:8080/");
+    ///     Ok::<_, std::io::Error>(address.to_string())
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// [`StaticResolver`]: crate::resolver::manual::StaticResolver
+    #[must_use]
+    pub fn new_with_static_resolver(resolver: StaticResolver) -> Self {
+        Self::new_with_resolver("static", resolver)
     }
 }
 

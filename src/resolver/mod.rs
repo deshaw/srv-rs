@@ -11,6 +11,8 @@ pub mod libresolv;
 #[cfg(feature = "hickory")]
 mod hickory;
 
+pub mod manual;
+
 /// Represents the ability to act as a SRV resolver.
 #[async_trait]
 pub trait SrvResolver: Send + Sync {
