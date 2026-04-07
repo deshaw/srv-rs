@@ -87,7 +87,7 @@ impl Affinity {
 /// Iterator over [`Uri`]s based on affinity. See [`Affinity`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AffinityUriIter {
-    /// Number of uris in the cache.e
+    /// Number of uris in the cache.
     n: usize,
     /// Index of the URI to produce first (i.e. the preferred URI).
     /// `0` if the first is preferred or there is no preferred URI at all.
