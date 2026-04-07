@@ -75,7 +75,8 @@ jobs:
             -- \
             --deny clippy::all \
             --deny clippy::pedantic \
-            --deny clippy::nursery
+            --deny clippy::nursery \
+            --deny warnings
 
   documentation:
     runs-on: ubuntu-latest
