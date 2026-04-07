@@ -74,7 +74,7 @@ impl SrvResolver for LibResolv {
 /// Representation of SRV records used by [`LibResolv`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LibResolvSrvRecord {
-    /// Records's target.
+    /// Record's target.
     pub target: String,
     /// Record's port.
     pub port: u16,
