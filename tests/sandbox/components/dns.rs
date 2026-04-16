@@ -90,7 +90,7 @@ impl MockDns {
         }
 
         let socket = UdpSocket::bind(Self::BIND_ADDR)?;
-        socket.set_read_timeout(Some(Duration::from_millis(1000)))?;
+        socket.set_read_timeout(Some(Duration::from_secs(1)))?;
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_clone = Arc::clone(&shutdown);
         let records = self.records.clone();
