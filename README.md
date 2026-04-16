@@ -76,7 +76,7 @@ the DNS resolver backends (see [Alternative Resolvers](README.md#alternative-res
 
 ```toml
 [dependencies]
-srv-rs = { version = "1.0.0", features = ["hickory"] }
+srv-rs = { version = "1.0.1", features = ["hickory"] }
 ```
 
 ## Contributing
