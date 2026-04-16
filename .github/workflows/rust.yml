@@ -33,7 +33,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bubblewrap
           echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
-          cargo install bindgen-cli
       - name: Run tests
         run: |
           # It is not possible to run all the tests in a single
@@ -63,9 +62,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Environment
-        run: |
-          cargo install bindgen-cli
       - name: Clippy
         run: |
           cargo clippy \
@@ -85,9 +81,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Environment
-        run: |
-          cargo install bindgen-cli
       - name: Documentation
         run: |
           cargo doc \
